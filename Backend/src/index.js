@@ -1,4 +1,4 @@
-const express = require('express')
+const express = require('express');
 const app = express();
 require('dotenv').config();
 const main = require("./config/db");
@@ -9,10 +9,9 @@ const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
 const cors = require('cors');
 
-
 const allowedOrigins = [
-  "http://localhost:5173", // dev
-  "https://vertexcode.vercel.app" // production
+  "http://localhost:5173",
+  "https://vertex-code-henna.vercel.appp"
 ];
 
 app.use(cors({
@@ -20,28 +19,23 @@ app.use(cors({
   credentials: true
 }));
 
-//origin:'*' koi bhi host isko access kr skta h
-
 app.use(express.json());
 app.use(cookieParser());
-app.use('/user',authRouter);
-app.use('/problem',problemRouter);
-app.use('/submission',submitRouter);
 
+app.use('/user', authRouter);
+app.use('/problem', problemRouter);
+app.use('/submission', submitRouter);
 
-const InitalizeConnection = async()=>{
-    try{
+// Connect database + redis when serverless loads
+(async () => {
+  try {
+    await Promise.all([main(), redisClient.connect()]);
+    console.log("DB Connected Successfully");
+  } catch (err) {
+    console.log("Error " + err);
+  }
+})();
 
-        await Promise.all([main(),redisClient.connect()]);
-        console.log("DB Connected Successfully");
-
-        app.listen(process.env.PORT, ()=>{
-            console.log("Server listening at port number: "+process.env.PORT);
-        })
-    }
-    catch(err){
-        console.log("Error "+err);
-    }
-}
-
-InitalizeConnection();
+// ❌ No app.listen()
+// ✔ Export the app for Vercel serverless
+module.exports = app;
