@@ -12,7 +12,7 @@ const cors = require('cors');
 
 const allowedOrigins = [
   "http://localhost:5173", // dev
-  "https://vertexcode-frontend.vercel.app" // production
+  "https://vertexcode.vercel.app" // production
 ];
 
 app.use(cors({
