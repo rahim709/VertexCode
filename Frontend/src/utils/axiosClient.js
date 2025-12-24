@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const axiosClient =  axios.create({
-    baseURL: 'http://localhost:3000', //means our backend is hosted in this url
+    baseURL: import.meta.env.VITE_API_URL, //means our backend is hosted in this url
     withCredentials: true,      // means browser ko bata raha hu iske saath cookies ko attach kr dena
     headers: {
         'Content-Type': 'application/json'  // jo bhi data vej raha hu oo json format me h

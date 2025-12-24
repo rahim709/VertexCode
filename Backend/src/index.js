@@ -10,10 +10,16 @@ const submitRouter = require('./routes/submit');
 const cors = require('cors');
 
 
+const allowedOrigins = [
+  "http://localhost:5173", // dev
+  "https://vertexcode-frontend.vercel.app" // production
+];
+
 app.use(cors({
-    origin:'http://localhost:5173',
-    credentials: true
-}))
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 //origin:'*' koi bhi host isko access kr skta h
 
 app.use(express.json());
