@@ -334,51 +334,52 @@ const correctSubmission = async (req, res) => {
 const getLeaderboard = async (req, res) => {
   try {
     const leaderboard = await User.aggregate([
-      // 1. Join with Submissions collection
+      // 1. Join with submissions
       {
         $lookup: {
           from: "submissions",
           localField: "_id",
           foreignField: "userId",
-          as: "userSubmissions"
-        }
+          as: "userSubmissions",
+        },
       },
 
-      // 2. Identify UNIQUE accepted problems for each user
+      // 2. Get UNIQUE accepted submissions (unique problemId)
       {
         $project: {
           _id: 1,
           firstName: 1,
           lastName: 1,
+          createdAt: 1, //  required for tie-breaker
           uniqueAcceptedSubmissions: {
-            // We use $filter to get only accepted subs, then $reduce to keep unique problemIds
             $reduce: {
               input: {
                 $filter: {
                   input: "$userSubmissions",
                   as: "sub",
-                  cond: { $eq: ["$$sub.status", "accepted"] }
-                }
+                  cond: { $eq: ["$$sub.status", "accepted"] },
+                },
               },
               initialValue: [],
               in: {
                 $cond: [
                   { $in: ["$$this.problemId", "$$value.problemId"] },
                   "$$value",
-                  { $concatArrays: ["$$value", ["$$this"]] }
-                ]
-              }
-            }
-          }
-        }
+                  { $concatArrays: ["$$value", ["$$this"]] },
+                ],
+              },
+            },
+          },
+        },
       },
 
-      // 3. Calculate solvedCount and difficulty-based vertexScore
+      // 3. Compute solvedCount and vertexScore
       {
         $project: {
           _id: 1,
           firstName: 1,
           lastName: 1,
+          createdAt: 1,
           solvedCount: { $size: "$uniqueAcceptedSubmissions" },
           vertexScore: {
             $reduce: {
@@ -392,29 +393,38 @@ const getLeaderboard = async (req, res) => {
                       branches: [
                         { case: { $eq: ["$$this.difficulty", "easy"] }, then: 10 },
                         { case: { $eq: ["$$this.difficulty", "medium"] }, then: 30 },
-                        { case: { $eq: ["$$this.difficulty", "hard"] }, then: 50 }
+                        { case: { $eq: ["$$this.difficulty", "hard"] }, then: 50 },
                       ],
-                      default: 0
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        }
+                      default: 0,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
       },
 
-      // 4. Sort by vertexScore (Primary) and solvedCount (Secondary)
-      { $sort: { vertexScore: -1, solvedCount: -1, firstName: 1 } },
+      // 4. FINAL SORT 
+      {
+        $sort: {
+          vertexScore: -1,   // primary
+          solvedCount: -1,   // secondary
+          createdAt: 1,      // tertiary (earlier joined first)
+        },
+      },
 
-      { $limit: 100 }
+      // 5. Limit leaderboard size
+      { $limit: 100 },
     ]);
 
     res.status(200).json(leaderboard);
   } catch (err) {
+    console.error("Leaderboard Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 module.exports = {createProblem, updateProblem, deleteProblem, getProblemById, getAllProblem, solvedAllProblembyUser, submittedProblem, recentSolved, correctSubmission, getLeaderboard};
 

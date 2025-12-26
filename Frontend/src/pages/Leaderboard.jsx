@@ -194,7 +194,11 @@ export default function Leaderboard() {
                           </div>
                           <div>
                             <p className="font-bold text-base-content text-sm">{leader.firstName} </p>
-                            {leader.solvedCount === 0 && <span className="text-[9px] text-primary font-black uppercase tracking-widest">New Entry</span>}
+                            {leader?.solvedCount === 0 && (
+                              <span className="text-[9px] text-primary font-black tracking-widest">
+                                New Member
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>

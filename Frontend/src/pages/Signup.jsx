@@ -10,7 +10,20 @@ import { Share2, Eye, EyeOff, Mail, Lock, UserCircle } from 'lucide-react';
 const signupSchema = z.object({
   firstName: z.string().min(3, "Username must be at least 3 characters"),
   emailId: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters")
+  password: z
+    .string()
+    .min(8)
+    .refine(
+      (val) =>
+        /[A-Z]/.test(val) &&     // uppercase
+        /[a-z]/.test(val) &&     // lowercase
+        /[0-9]/.test(val) &&     // number
+        /[@$!%*?&]/.test(val),  // special character
+      {
+        message:
+          "Use at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character",
+      }
+    ),
 });
 
 function Signup() {
@@ -48,7 +61,7 @@ function Signup() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
       {/* Toast Notification */}
       {error && (
-        <div className="toast toast-top toast-center md:toast-end z-100">
+        <div className="toast toast-top toast-center z-100">
           <div className="alert alert-error shadow-lg">
             <span className="font-semibold">
               {typeof error === "string" ? error : "Account creation failed. Try again."}
@@ -81,7 +94,7 @@ function Signup() {
               </label>
               <input
                 type="text"
-                placeholder="coding_ninja"
+                placeholder="john"
                 className={`input input-bordered w-full bg-base-200/50 focus:bg-base-100 transition-all ${errors.firstName ? 'input-error' : ''}`} 
                 {...register('firstName')}
               />
@@ -99,7 +112,7 @@ function Signup() {
               </label>
               <input
                 type="email"
-                placeholder="dev@vertexcode.com"
+                placeholder="john@gmail.com"
                 className={`input input-bordered w-full bg-base-200/50 focus:bg-base-100 transition-all ${errors.emailId ? 'input-error' : ''}`}
                 {...register('emailId')}
               />

@@ -135,7 +135,7 @@ const MyProfile = () => {
                     <span className="text-4xl">{user?.firstName?.[0]?.toUpperCase()}</span>
                   </div>
                 </div>
-                <h2 className="card-title text-2xl">{user?.lastName || "Developer"}</h2>
+                <h2 className="card-title text-2xl">{user?.lastName || "Coder"}</h2>
                 <div className="flex items-center gap-2">
                   <p className="text-primary font-bold">@{user?.firstName}</p>
                 </div>
@@ -204,7 +204,7 @@ const MyProfile = () => {
             <Share2 className="w-5 h-5 text-primary rotate-90" />
             <span className="font-bold text-lg tracking-tighter">Vertex<span className="text-primary">Code</span></span>
           </div>
-          <p className="text-base-content/50 text-[10px] font-black uppercase tracking-[0.2em]">
+          <p className="text-base-content/50 text-sm">
             Copyright © 2025 VertexCode
           </p>
         </div>

@@ -22,22 +22,14 @@ app.use(cors({
 
 // Health check
 app.get('/', (req, res) => {
-  res.send('VertexCode API is running 🚀');
+  res.send('VertexCode API is running ');
 });
 
-// Security header (optional, safe)
-app.use((req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data:;"
-  );
-  next();
-});
 
 app.use(express.json());
 app.use(cookieParser());
 
-// 🔥 ENSURE DB + REDIS BEFORE ANY ROUTE
+//  ENSURE DB + REDIS CONNECTED BEFORE ANY ROUTE
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -47,7 +39,6 @@ app.use(async (req, res, next) => {
       await redisClient.connect();
     }
 
-    req.redis = redisClient; // optional: access in controllers
     next();
   } catch (err) {
     console.error('Startup error:', err);
@@ -55,10 +46,8 @@ app.use(async (req, res, next) => {
   }
 });
 
-// ✅ ROUTES (NO /api)
 app.use('/user', authRouter);
 app.use('/problem', problemRouter);
 app.use('/submission', submitRouter);
 
-// ❌ NO app.listen() on Vercel
 module.exports = app;

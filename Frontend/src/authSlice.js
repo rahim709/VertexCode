@@ -5,13 +5,16 @@ export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-    const response =  await axiosClient.post('/user/register', userData);
-    return response.data.user;
+      const response = await axiosClient.post('/user/register', userData);
+      return response.data.user;
     } catch (error) {
-      return rejectWithValue(error);
+      const message =
+        error.response?.data?.message || "Registration failed";
+      return rejectWithValue(message);
     }
   }
 );
+
 
 // const response = {
 //     data:{
@@ -94,7 +97,7 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Something went wrong';
+        state.error = action.payload || 'Something went wrong';
         state.isAuthenticated = false;
         state.user = null;
         state.authChecked = true;   // NEW
@@ -113,7 +116,7 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Something went wrong';
+        state.error = action.payload || 'Something went wrong';
         state.isAuthenticated = false;
         state.user = null;
         state.authChecked = true;   // NEW

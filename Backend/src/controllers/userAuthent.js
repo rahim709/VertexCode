@@ -7,114 +7,116 @@ const redisClient = require('../config/redis');
 const Submission = require('../models/submission');
 
 //Register
-const register= async (req, res)=>{
+const register = async (req, res) => {
+  try {
+    validate(req.body);
 
-    try{
-        // console.log("Hello");
-        //validate the user
-        validate(req.body);
+    const { firstName, emailId, password } = req.body;
 
-        const {firstName, emailId, password} = req.body;
-        
-        //email already exists or not
-
-        const ans = await User.exists({emailId});
-        // if(ans) console.log("User exists");
-        // else console.log("No such user");
-        
-        req.body.password = await bcrypt.hash(password,10);
-
-        req.body.role = 'user';
-        
-        const user = await User.create(req.body);
-        const token = jwt.sign({_id:user._id,emailId,role:user.role},process.env.JWT_KEY,{ expiresIn: '1h' })  //or 60*60
-        
-        const count = user.problemSolved.length;
-
-        const reply = {
-            firstName: user.firstName,
-            emailId: user.emailId,
-            _id: user._id,
-            role: user.role,
-            firstName:user.firstName,
-            lastName: user.lastName,
-            summary: user.summary,
-            age: user.age,
-            count: count
-        };
-        //console.log(user.role);
-        
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 60 * 60 * 1000, // 1 hour
-        });
-
-
-        res.status(201).json({
-            user:reply,
-            message: "Loggin Successfully"
-        })
+    const exists = await User.exists({ emailId });
+    if (exists) {
+      return res.status(400).json({
+        message: "User already registered"
+      });
     }
-    catch(err){
 
-        res.status(400).send("Error "+err);
-    }
-}
+    req.body.password = await bcrypt.hash(password, 10);
+    req.body.role = "user";
+
+    const user = await User.create(req.body);
+
+    const token = jwt.sign(
+      { _id: user._id, emailId, role: user.role },
+      process.env.JWT_KEY,
+      { expiresIn: "1h" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 60 * 60 * 1000,
+    });
+
+    res.status(201).json({
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailId: user.emailId,
+        role: user.role,
+        summary: user.summary,
+        age: user.age,
+        count: user.problemSolved.length
+      },
+      message: "Registered successfully"
+    });
+
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 
 //login
-const login = async(req, res)=>{
+const login = async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
 
-    try{
-        const {emailId, password} = req.body;
-
-        if(!emailId){
-            throw new Error("Invalid Credentials");
-        }
-        if(!password){
-            throw new Error("Invalid Credentials");
-        }
-
-        const user = await User.findOne({emailId});
-
-        const match = await bcrypt.compare(password,user.password);
-        if(!match)
-            throw new Error("Invalid credentials");
-        
-        const solvedCount = (user.problemSolved && user.problemSolved.length) || 0;
-
-        const reply = {
-            firstName: user.firstName,
-            emailId: user.emailId,
-            _id: user._id,
-            role: user.role,
-            lastName: user.lastName,
-            summary: user.summary,
-            age: user.age,
-            count: solvedCount
-        };
-
-        //console.log(user.role);
-
-        const token = jwt.sign({_id:user._id,emailId,role:user.role},process.env.JWT_KEY,{ expiresIn: '1h' })  //or 60*60
-        
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 60 * 60 * 1000, // 1 hour
-        });
-
-        res.status(201).json({
-            user:reply,
-            message: "Loggin Successfully"
-        })
+    if (!emailId || !password) {
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
     }
-    catch(err){
-        res.status(401).send("Error: "+err);
+
+    const user = await User.findOne({ emailId });
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
     }
-}
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
+    }
+
+    const token = jwt.sign(
+      { _id: user._id, emailId, role: user.role },
+      process.env.JWT_KEY,
+      { expiresIn: "1h" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailId: user.emailId,
+        role: user.role,
+        summary: user.summary,
+        age: user.age,
+        count: user.problemSolved.length
+      },
+      message: "Login successful"
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
 
 
 //logout

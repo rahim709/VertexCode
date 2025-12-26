@@ -21,7 +21,7 @@ const userMiddleware = async (req, res, next) => {
       throw new Error("User doesn't exist");
     }
 
-    // 🔥 Redis v4 — correct usage
+    //  Redis v4 — correct usage
     const redisClient = getRedisClient();
     const isBlocked = await redisClient.exists(`token:${token}`);
 

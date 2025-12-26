@@ -9,8 +9,23 @@ import { Share2, Eye, EyeOff, Mail, Lock } from 'lucide-react'; // Added Lucide 
 
 const loginSchema = z.object({
   emailId: z.string().email("Invalid Email"),
-  password: z.string().min(8, "Password must be at least 8 characters") 
+  password: z
+    .string()
+    .min(8)
+    .refine(
+      (val) =>
+        /[A-Z]/.test(val) &&     // uppercase
+        /[a-z]/.test(val) &&     // lowercase
+        /[0-9]/.test(val) &&     // number
+        /[@$!%*?&]/.test(val),  // special character
+      {
+        message:
+          "Use at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character",
+      }
+    ),
 });
+
+
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -47,9 +62,9 @@ function Login() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
       {/* Toast Notification for Errors */}
       {error && (
-        <div className="toast toast-top toast-center md:toast-end z-100">
+        <div className="toast toast-top toast-center z-100">
           <div className="alert alert-error shadow-lg">
-            <span className="font-semibold">{typeof error === "string" ? error : "Invalid credentials"}</span>
+            <span className="font-semibold">{typeof error === "string" ? error : "Login Failed. Try Again"}</span>
           </div>
         </div>
       )}
@@ -79,7 +94,7 @@ function Login() {
               </label>
               <input
                 type="email"
-                placeholder="developer@vertex.com"
+                placeholder="john@gmail.com"
                 className={`input input-bordered w-full bg-base-200/50 focus:bg-base-100 transition-all ${errors.emailId ? 'input-error' : ''}`} 
                 {...register('emailId')}
               />
