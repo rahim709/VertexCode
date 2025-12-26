@@ -1,6 +1,7 @@
-const express = require('express')
+const express = require('express');
 const app = express();
 require('dotenv').config();
+
 const main = require("./config/db");
 const redisClient = require("./config/redis");
 const cookieParser = require('cookie-parser');
@@ -9,33 +10,38 @@ const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
 const cors = require('cors');
 
-
 app.use(cors({
-    origin:['http://localhost:5174','https://vertex-code-ycpu.vercel.app/'],
-    credentials: true
-}))
-//origin:'*' koi bhi host isko access kr skta h
+  origin: [
+    'http://localhost:5174',
+    'https://vertex-code-ycpu.vercel.app'
+  ],
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(cookieParser());
-app.use('/user',authRouter);
-app.use('/problem',problemRouter);
-app.use('/submission',submitRouter);
 
+app.use('/user', authRouter);
+app.use('/problem', problemRouter);
+app.use('/submission', submitRouter);
 
-const InitalizeConnection = async()=>{
-    try{
+// 🔴 NO app.listen()
 
-        await Promise.all([main(),redisClient.connect()]);
-        console.log("DB Connected Successfully");
+// Initialize DB + Redis ONCE
+let isConnected = false;
 
-        app.listen(process.env.PORT, ()=>{
-            console.log("Server listening at port number: "+process.env.PORT);
-        })
-    }
-    catch(err){
-        console.log("Error "+err);
-    }
-}
+const initializeConnection = async () => {
+  if (isConnected) return;
+  try {
+    await Promise.all([main(), redisClient.connect()]);
+    console.log("DB + Redis connected");
+    isConnected = true;
+  } catch (err) {
+    console.error("Connection error:", err);
+  }
+};
 
-InitalizeConnection();
+initializeConnection();
+
+// ✅ Export app (MANDATORY for Vercel)
+module.exports = app;
