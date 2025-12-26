@@ -11,7 +11,7 @@ const cors = require('cors');
 
 
 app.use(cors({
-    origin:['http://localhost:5174',],
+    origin:['http://localhost:5174','https://vertex-code-ycpu.vercel.app/'],
     credentials: true
 }))
 //origin:'*' koi bhi host isko access kr skta h
