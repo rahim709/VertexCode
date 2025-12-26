@@ -10,14 +10,15 @@ const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
 const cors = require('cors');
 
-app.use(cors({
-  origin: [
-    'http://localhost:5174',
-    'https://vertex-code-ycpu.vercel.app'
-  ],
-  credentials: true
-}));
+// app.use(cors({
+//   origin: [
+//     'http://localhost:5174',
+//     'https://vertex-code-ycpu.vercel.app'
+//   ],
+//   credentials: true
+// }));
 
+app.use(cors());
 app.get('/', (req, res) => {
   res.send('VertexCode API is running 🚀');
 });
