@@ -12,11 +12,10 @@ const authRouter = require('./routes/userAuth');
 const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
 
-// ✅ CORS (FIXED – no trailing slash)
 app.use(cors({
   origin: [
     'http://localhost:5174',
-    'https://vertex-code-ycpu.vercel.app'
+    'https://vertex-code-api.vercel.app/'
   ],
   credentials: true
 }));

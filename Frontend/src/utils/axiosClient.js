@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const axiosClient =  axios.create({
-    baseURL: "https://vertex-code-pi.vercel.app",
+    baseURL: "https://vertex-code-api.vercel.app/",
     //means our backend is hosted in this url
     withCredentials: true,      // means browser ko bata raha hu iske saath cookies ko attach kr dena
     headers: {
