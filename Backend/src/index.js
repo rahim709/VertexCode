@@ -18,6 +18,20 @@ app.use(cors({
   credentials: true
 }));
 
+app.get('/', (req, res) => {
+  res.send('VertexCode API is running 🚀');
+});
+
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; img-src 'self' data:;"
+  );
+  next();
+});
+
+
 app.use(express.json());
 app.use(cookieParser());
 
