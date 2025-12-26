@@ -288,7 +288,7 @@ const recentSolved = async (req, res) => {
     ]);
 
     // console.log(latest);
-    if (!latest.length) return res.status(200).send("No submission is present");
+    if (!latest.length) return res.status(200).json([]);
 
     res.status(200).json(latest);
   } catch (err) {
@@ -322,7 +322,7 @@ const correctSubmission = async (req, res) => {
 
     if (!acceptedQns.length)
       return res.status(200).json([]);
-    
+
     res.status(200).json(acceptedQns);
   } catch (err) {
     res.status(500).send("Error: " + err);
