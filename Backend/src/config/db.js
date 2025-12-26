@@ -1,9 +1,21 @@
 const mongoose = require('mongoose');
 
-async function main(){
+let isConnected = false;
 
-    await mongoose.connect(process.env.DB_CONNECT_STRING);
+async function connectDB() {
+  if (isConnected) return;
+
+  try {
+    await mongoose.connect(process.env.DB_CONNECT_STRING, {
+      bufferCommands: false, // IMPORTANT for serverless
+    });
+
+    isConnected = true;
+    console.log('MongoDB connected');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
+  }
 }
 
-module.exports = main;
-
+module.exports = connectDB;
