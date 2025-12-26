@@ -15,7 +15,7 @@ const submitRouter = require('./routes/submit');
 app.use(cors({
   origin: [
     'http://localhost:5174',
-    'https://vertex-code-api.vercel.app/'
+    'https://app-vertex-code.vercel.app'
   ],
   credentials: true
 }));
