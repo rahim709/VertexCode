@@ -321,8 +321,8 @@ const correctSubmission = async (req, res) => {
     ]);
 
     if (!acceptedQns.length)
-      return res.status(200).send("No submission is present");
-
+      return res.status(200).json([]);
+    
     res.status(200).json(acceptedQns);
   } catch (err) {
     res.status(500).send("Error: " + err);
