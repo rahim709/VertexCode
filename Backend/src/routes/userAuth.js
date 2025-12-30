@@ -3,10 +3,12 @@ const {register, login,logout, adminRegister, deleteProfile, updateProfile} = re
 const authRouter = express.Router();
 const userMiddleware = require("../middleware/userMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
-
+const {verifyOTP, resendOTP} = require("../controllers/userOTP");
 
 //Register
 authRouter.post('/register', register);
+authRouter.post('/verifyOTP', verifyOTP);
+authRouter.post('/resendOTP', resendOTP);
 authRouter.post('/login',login);
 authRouter.post('/logout',userMiddleware,logout);
 authRouter.post('/admin/register',adminMiddleware, adminRegister);

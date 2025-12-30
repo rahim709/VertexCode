@@ -64,6 +64,10 @@ const ProblemPage = () => {
   };
 
   const handleRun = async () => {
+    // Logic: Prevent execution if the editor is empty or contains only whitespace
+    if (!code || !code.trim()) {
+      return alert("Please write some code before running."); 
+    }
     setLoading(true);
     setRunResult(null);
     
@@ -87,6 +91,12 @@ const ProblemPage = () => {
   };
 
   const handleSubmitCode = async () => {
+
+    // Logic: Prevent submission if the editor is empty or contains only whitespace
+    if (!code || !code.trim()) {
+      return alert("Please write some code before submitting.");
+    }
+    
     setLoading(true);
     setSubmitResult(null);
     

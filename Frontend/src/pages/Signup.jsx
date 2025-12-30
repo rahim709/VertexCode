@@ -5,23 +5,22 @@ import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router';
 import { registerUser, resetError } from '../authSlice';
-import { Share2, Eye, EyeOff, Mail, Lock, UserCircle } from 'lucide-react';
+import { Share2, Eye, EyeOff, Mail, Lock, UserCircle, UserPlus, Info } from 'lucide-react';
 
 const signupSchema = z.object({
   firstName: z.string().min(3, "Username must be at least 3 characters"),
   emailId: z.string().email("Please enter a valid email address"),
   password: z
     .string()
-    .min(8)
+    .min(8, "Password must be at least 8 characters")
     .refine(
       (val) =>
-        /[A-Z]/.test(val) &&     // uppercase
-        /[a-z]/.test(val) &&     // lowercase
-        /[0-9]/.test(val) &&     // number
-        /[@$!%*?&]/.test(val),  // special character
+        /[A-Z]/.test(val) &&
+        /[a-z]/.test(val) &&
+        /[0-9]/.test(val) &&
+        /[@$!%*?&]/.test(val),
       {
-        message:
-          "Use at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character",
+        message: "Password must include uppercase, lowercase, number, and special character",
       }
     ),
 });
@@ -30,25 +29,26 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, loading, error } = useSelector((state) => state.auth); 
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({ resolver: zodResolver(signupSchema) });
+  const { loading, error, pendingVerificationUserId } = useSelector((state) => state.auth);
+
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({ 
+    resolver: zodResolver(signupSchema),
+    mode: "onChange" // Logic: Validate as the user types to update requirements
+  });
+
+  // Logic: Watch password value to show real-time requirement status
+  const passwordValue = watch("password", "");
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
+    if (pendingVerificationUserId) {
+      navigate("/verify-otp");
     }
-  }, [isAuthenticated, navigate]);
+  }, [pendingVerificationUserId, navigate]);
 
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => {
-        dispatch(resetError());
-      }, 3000);
+      const timer = setTimeout(() => dispatch(resetError()), 3000);
       return () => clearTimeout(timer);
     }
   }, [error, dispatch]);
@@ -59,21 +59,16 @@ function Signup() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
-      {/* Toast Notification */}
       {error && (
         <div className="toast toast-top toast-center z-100">
-          <div className="alert alert-error shadow-lg">
-            <span className="font-semibold">
-              {typeof error === "string" ? error : "Account creation failed. Try again."}
-            </span>
+          <div className="alert alert-error shadow-lg text-white">
+            <span className="font-semibold">{error}</span>
           </div>
         </div>
       )}
 
       <div className="card w-full max-w-md bg-base-100 shadow-2xl overflow-hidden">
         <div className="card-body p-8">
-          
-          {/* Brand Identity */}
           <div className="flex flex-col items-center gap-2 mb-8 text-center">
             <div className="bg-primary/10 p-3 rounded-2xl">
               <Share2 className="w-10 h-10 text-primary rotate-90" />
@@ -81,11 +76,10 @@ function Signup() {
             <h2 className="text-3xl font-extrabold tracking-tight">
               Join <span className="text-primary">VertexCode</span>
             </h2>
-            <p className="text-sm text-base-content/60 font-medium">Start your journey to algorithmic mastery</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Username Field */}
+            {/* Username & Email inputs remain the same... */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -94,16 +88,11 @@ function Signup() {
               </label>
               <input
                 type="text"
-                placeholder="john"
-                className={`input input-bordered w-full bg-base-200/50 focus:bg-base-100 transition-all ${errors.firstName ? 'input-error' : ''}`} 
+                className={`input input-bordered w-full bg-base-200/50 ${errors.firstName ? 'input-error' : ''}`}
                 {...register('firstName')}
               />
-              {errors.firstName && (
-                <span className="text-error text-xs mt-1 font-medium">{errors.firstName.message}</span>
-              )}
             </div>
 
-            {/* Email Field */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -112,16 +101,12 @@ function Signup() {
               </label>
               <input
                 type="email"
-                placeholder="john@gmail.com"
-                className={`input input-bordered w-full bg-base-200/50 focus:bg-base-100 transition-all ${errors.emailId ? 'input-error' : ''}`}
+                className={`input input-bordered w-full bg-base-200/50 ${errors.emailId ? 'input-error' : ''}`}
                 {...register('emailId')}
               />
-              {errors.emailId && (
-                <span className="text-error text-xs mt-1 font-medium">{errors.emailId.message}</span>
-              )}
             </div>
 
-            {/* Password Field */}
+            {/* Password Field with Initial Requirements Logic */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -131,43 +116,54 @@ function Signup() {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className={`input input-bordered w-full pr-10 bg-base-200/50 focus:bg-base-100 transition-all ${errors.password ? 'input-error' : ''}`}
+                  className={`input input-bordered w-full pr-10 bg-base-200/50 ${errors.password ? 'input-error' : ''}`}
                   {...register('password')}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-3 flex items-center text-base-content/40 hover:text-primary transition-colors"
+                  className="absolute inset-y-0 right-3"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && (
-                <span className="text-error text-xs mt-1 font-medium">{errors.password.message}</span>
-              )}
+
+              {/* Logic: Display password format requirements initially and during typing */}
+              <div className="mt-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-base-content/40 mb-2 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Password Requirements
+                </p>
+                <ul className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                  <li className={passwordValue.length >= 8 ? "text-success" : "text-base-content/50"}>
+                    • Min. 8 characters
+                  </li>
+                  <li className={/[A-Z]/.test(passwordValue) ? "text-success" : "text-base-content/50"}>
+                    • One Uppercase
+                  </li>
+                  <li className={/[a-z]/.test(passwordValue) ? "text-success" : "text-base-content/50"}>
+                    • One Lowercase
+                  </li>
+                  <li className={/[0-9]/.test(passwordValue) ? "text-success" : "text-base-content/50"}>
+                    • One Number
+                  </li>
+                  <li className={/[@$!%*?&]/.test(passwordValue) ? "text-success" : "text-base-content/50"}>
+                    • Special Char (@$!%*?&)
+                  </li>
+                </ul>
+              </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="form-control mt-8"> 
-              <button
-                type="submit"
-                className={`btn btn-primary btn-block text-lg h-12 shadow-lg shadow-primary/20 ${loading ? 'loading btn-disabled' : ''}`}
-                disabled={loading}
-              >
-                {loading ? 'Creating Account...' : 'Create Profile'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="btn btn-primary btn-block h-12 shadow-lg shadow-primary/20 mt-4"
+              disabled={loading}
+            >
+              {loading ? 'Sending OTP...' : <span className="flex items-center gap-2 uppercase font-bold tracking-wider">Create Profile <UserPlus className="w-4 h-4" /></span>}
+            </button>
           </form>
 
-          {/* Login Redirect */}
-          <div className="divider text-xs text-base-content/40 uppercase font-bold tracking-widest mt-8">Already a member?</div>
-          
-          <div className="text-center">
-            <NavLink to="/login" className="btn btn-outline btn-block border-base-300 hover:border-primary hover:bg-transparent hover:text-primary">
-              Log In to Vertex
-            </NavLink>
-          </div>
+          <div className="divider text-xs uppercase font-bold tracking-widest mt-8">Already a member?</div>
+          <NavLink to="/login" className="btn btn-outline btn-block uppercase font-bold tracking-wider">Log In</NavLink>
         </div>
       </div>
     </div>

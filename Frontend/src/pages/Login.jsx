@@ -5,32 +5,18 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router'; 
 import { loginUser, resetError } from "../authSlice";
 import { useEffect, useState } from 'react';
-import { Share2, Eye, EyeOff, Mail, Lock } from 'lucide-react'; // Added Lucide icons
+import { Share2, Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react'; 
 
 const loginSchema = z.object({
   emailId: z.string().email("Invalid Email"),
-  password: z
-    .string()
-    .min(8)
-    .refine(
-      (val) =>
-        /[A-Z]/.test(val) &&     // uppercase
-        /[a-z]/.test(val) &&     // lowercase
-        /[0-9]/.test(val) &&     // number
-        /[@$!%*?&]/.test(val),  // special character
-      {
-        message:
-          "Use at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character",
-      }
-    ),
+  password: z.string().min(8, "Password must be at least 8 characters")
 });
-
-
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  
   const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
   
   const {
@@ -39,12 +25,14 @@ function Login() {
     formState: { errors },
   } = useForm({ resolver: zodResolver(loginSchema) });
 
+  // Logic: Redirect to landing/home if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/');
     }
   }, [isAuthenticated, navigate]);
 
+  // Logic: Auto-clear backend errors after 3 seconds
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -60,20 +48,17 @@ function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
-      {/* Toast Notification for Errors */}
       {error && (
-        <div className="toast toast-top toast-center z-100">
+        <div className="toast toast-top toast-center z-[100]">
           <div className="alert alert-error shadow-lg">
             <span className="font-semibold">{typeof error === "string" ? error : "Login Failed. Try Again"}</span>
           </div>
         </div>
       )}
 
-      {/* Main Login Card - Responsive width */}
       <div className="card w-full max-w-md bg-base-100 shadow-2xl overflow-hidden">
         <div className="card-body p-8">
           
-          {/* Logo Branding */}
           <div className="flex flex-col items-center gap-2 mb-8">
             <div className="bg-primary/10 p-3 rounded-2xl">
               <Share2 className="w-10 h-10 text-primary rotate-90" />
@@ -85,7 +70,6 @@ function Login() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email Field */}
             <div className="form-control w-full">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -103,7 +87,6 @@ function Login() {
               )}
             </div>
 
-            {/* Password Field */}
             <div className="form-control w-full">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -130,25 +113,28 @@ function Login() {
               )}
             </div>
 
-            {/* Login Button */}
             <div className="form-control mt-6">
+              {/* Logic: Button text updates to 'Signing In...' when loading; no spinning roll */}
               <button
                 type="submit"
-                className={`btn btn-primary btn-block text-lg h-12 shadow-lg shadow-primary/20 ${loading ? 'loading btn-disabled' : ''}`}
+                className="btn btn-primary btn-block text-lg h-12 shadow-lg shadow-primary/20"
                 disabled={loading}
               >
                 {loading ? (
-                  <span className="loading loading-spinner"></span>
-                ) : 'Sign In'}
+                  "Signing In..."
+                ) : (
+                  <span className="flex items-center gap-2 uppercase font-bold tracking-wider">
+                    Sign In <LogIn className="w-5 h-5" />
+                  </span>
+                )}
               </button>
             </div>
           </form>
 
-          {/* Secondary Actions */}
           <div className="divider text-xs text-base-content/40 uppercase font-bold tracking-widest mt-8">New to Vertex?</div>
           
           <div className="text-center">
-            <NavLink to="/signup" className="btn btn-outline btn-block border-base-300 hover:border-primary hover:bg-transparent hover:text-primary">
+            <NavLink to="/signup" className="btn btn-outline btn-block border-base-300 hover:border-primary hover:bg-transparent hover:text-primary uppercase font-bold tracking-wider">
               Create Vertex Profile
             </NavLink>
           </div>

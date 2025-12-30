@@ -2,13 +2,14 @@ const mongoose = require('mongoose');
 const {Schema} = mongoose;
 
 const userSchema = new Schema({
-
+    // treated as username
     firstName:{
         type:String,
         required:true,
         minLength:3,
         maxLength:20
     },
+    // full name
     lastName:{
         type:String,
         minLength:3,
@@ -47,6 +48,17 @@ const userSchema = new Schema({
     summary:{
         type:String
     },
+    isVerified:{
+        type:Boolean,
+        default:false
+    },
+    verificationCode:{
+        type:String
+    },
+    verificationExpiry: {
+        type: Date,
+        expires: 300
+    }
 
 },{
     timestamps:true

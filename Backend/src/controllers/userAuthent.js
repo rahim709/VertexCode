@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const redisClient = require('../config/redis');
 const Submission = require('../models/submission');
+const sendOTPEmail = require('../services/emailService');
 
 //Register
 const register = async (req, res) => {
@@ -13,50 +14,57 @@ const register = async (req, res) => {
 
     const { firstName, emailId, password } = req.body;
 
-    const exists = await User.exists({ emailId });
-    if (exists) {
-      return res.status(400).json({
-        message: "User already registered"
-      });
+    //  Check existing user
+    const existingUser = await User.findOne({ emailId });
+
+    if (existingUser) {
+      // Case 1: User exists but NOT verified then delete & allow re-register
+      if (!existingUser.isVerified) {
+        await User.deleteOne({ _id: existingUser._id });
+      } else {
+        //  Case 2: Already verified
+        return res.status(400).json({
+          message: "User already exists. Please login."
+        });
+      }
     }
 
-    req.body.password = await bcrypt.hash(password, 10);
-    req.body.role = "user";
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create(req.body);
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = await bcrypt.hash(otp, 10);
 
-    const token = jwt.sign(
-      { _id: user._id, emailId, role: user.role },
-      process.env.JWT_KEY,
-      { expiresIn: "1h" }
-    );
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 60 * 60 * 1000,
+    //  Create new user
+    const user = await User.create({
+      firstName,
+      emailId,
+      password: hashedPassword,
+      verificationCode: hashedOtp,
+      verificationExpiry: Date.now() + 5 * 60 * 1000, // 5 minutes, // TTL starts
+      isVerified: false,
+      role: "user"
     });
 
+    //  Send OTP
+    await sendOTPEmail(emailId, otp);
+
     res.status(201).json({
-      user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        emailId: user.emailId,
-        role: user.role,
-        summary: user.summary,
-        age: user.age,
-        count: user.problemSolved.length
-      },
-      message: "Registered successfully"
+      message: "OTP sent to your email. Please verify.",
+      userId: user._id
     });
 
   } catch (err) {
+    // Handle duplicate index just in case
+    if (err.code === 11000) {
+      return res.status(400).json({
+        message: "Email already in use. Try again after a minute."
+      });
+    }
     res.status(400).json({ message: err.message });
   }
 };
-
 
 //login
 const login = async (req, res) => {
@@ -76,6 +84,12 @@ const login = async (req, res) => {
       });
     }
 
+    if (!user.isVerified) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({
@@ -83,6 +97,7 @@ const login = async (req, res) => {
       });
     }
 
+    
     const token = jwt.sign(
       { _id: user._id, emailId, role: user.role },
       process.env.JWT_KEY,
@@ -116,8 +131,6 @@ const login = async (req, res) => {
     });
   }
 };
-
-
 
 //logout
 const logout = async(req, res)=>{
@@ -176,7 +189,6 @@ const adminRegister = async(req, res)=>{
 
 }
 
-
 //delete profile
 const deleteProfile = async(req, res)=>{
 
@@ -199,8 +211,7 @@ const deleteProfile = async(req, res)=>{
     }
 }
 
-//update profile
-// updateProfile
+// update Profile
 const updateProfile = async (req, res) => {
   try {
     const userId = req.result._id;
