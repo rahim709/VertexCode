@@ -133,29 +133,50 @@ function Problems() {
           </div>
           
           <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0">
-            {['status', 'difficulty', 'tag'].map((filterType) => (
-              <select 
-                key={filterType}
-                className="select select-sm select-bordered bg-base-200/50 border-none font-medium hover:bg-base-200 transition-colors"
-                value={filters[filterType]}
-                onChange={(e) => {setFilters({...filters, [filterType]: e.target.value}); setCurrentPage(1)}}
-              >
-                <option value="all">{filterType.charAt(0).toUpperCase() + filterType.slice(1)}s</option>
-                {filterType === 'status' && <option value="solved">Solved</option>}
-                {filterType === 'difficulty' && <>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </>}
-                {filterType === 'tag' && <>
-                  <option value="array">Arrays</option>
-                  <option value="linkedList">Linked Lists</option>
-                  <option value="graph">Graphs</option>
-                  <option value="dp">DP</option>
-                </>}
-              </select>
-            ))}
+            {['status', 'difficulty', 'tag'].map((filterType) => {
+              const labelMap = {
+                status: 'Status',
+                difficulty: 'Difficulty',
+                tag: 'Tags'
+              };
+
+              return (
+                <select
+                  key={filterType}
+                  className="select select-sm select-bordered bg-base-200/50 border-none font-medium hover:bg-base-200 transition-colors"
+                  value={filters[filterType]}
+                  onChange={(e) => {
+                    setFilters({ ...filters, [filterType]: e.target.value });
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value="all">{labelMap[filterType]}</option>
+
+                  {filterType === 'status' && (
+                    <option value="solved">Solved</option>
+                  )}
+
+                  {filterType === 'difficulty' && (
+                    <>
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </>
+                  )}
+
+                  {filterType === 'tag' && (
+                    <>
+                      <option value="array">Arrays</option>
+                      <option value="linkedList">Linked Lists</option>
+                      <option value="graph">Graphs</option>
+                      <option value="dp">DP</option>
+                    </>
+                  )}
+                </select>
+              );
+            })}
           </div>
+
         </div>
 
         {/* --- Problems Display --- */}

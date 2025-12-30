@@ -91,7 +91,7 @@ function HomePage() {
             
             // Pick the index from the SORTED list
             const index = dateSeed % sortedProblems.length;
-            const selectedPotd = sortedProblems[10];
+            const selectedPotd = sortedProblems[index];
             
             setPotd(selectedPotd);
             

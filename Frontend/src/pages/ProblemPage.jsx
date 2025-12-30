@@ -64,58 +64,80 @@ const ProblemPage = () => {
   };
 
   const handleRun = async () => {
-    // Logic: Prevent execution if the editor is empty or contains only whitespace
-    if (!code || !code.trim()) {
-      return alert("Please write some code before running."); 
-    }
-    setLoading(true);
-    setRunResult(null);
-    
-    try {
-      const response = await axiosClient.post(`/submission/run/${problemId}`, {
-        code,
-        language: selectedLanguage
-      });
-      setRunResult(response.data);
-      setLoading(false);
-      setActiveRightTab('testcase');
-    } catch (error) {
-      console.error('Error running code:', error);
-      setRunResult({
-        success: false,
-        error: 'Internal server error'
-      });
-      setLoading(false);
-      setActiveRightTab('testcase');
-    }
-  };
+  if (!code || !code.trim()) {
+    return alert("Please write some code before running.");
+  }
+
+  setLoading(true);
+  setRunResult(null);
+
+  try {
+    const response = await axiosClient.post(
+      `/submission/run/${problemId}`,
+      { code, language: selectedLanguage }
+    );
+
+    setRunResult({
+      success: response.data.success ?? false,
+      runtime: response.data.runtime ?? 0,
+      memory: response.data.memory ?? 0,
+      testCases: Array.isArray(response.data.testCases) ? response.data.testCases : [],
+      error: null
+    });
+  } catch (error) {
+    console.error("Error running code:", error);
+    // Logic: Display error directly in the Test Results tab
+    setRunResult({
+      success: false,
+      error: "Internal server error",
+      testCases: [] 
+    });
+  } finally {
+    setLoading(false);
+    setActiveRightTab("testcase");
+  }
+};
+
 
   const handleSubmitCode = async () => {
+  if (!code || !code.trim()) {
+    return alert("Please write some code before submitting.");
+  }
 
-    // Logic: Prevent submission if the editor is empty or contains only whitespace
-    if (!code || !code.trim()) {
-      return alert("Please write some code before submitting.");
-    }
-    
-    setLoading(true);
-    setSubmitResult(null);
-    
-    try {
-      const response = await axiosClient.post(`/submission/submit/${problemId}`, {
-        code:code,
-        language: selectedLanguage
-      });
-      console.log(response.data);
-      setSubmitResult(response.data);
-      setLoading(false);
-      setActiveRightTab('result');
-    } catch (error) {
-      console.error('Error submitting code:', error);
-      setSubmitResult(null);
-      setLoading(false);
-      setActiveRightTab('result');
-    }
-  };
+  setLoading(true);
+  setSubmitResult(null);
+
+  try {
+    const response = await axiosClient.post(
+      `/submission/submit/${problemId}`,
+      { code, language: selectedLanguage }
+    );
+
+    setSubmitResult({
+      accepted: !!response.data.accepted,
+      passedTestCases: response.data.passedTestCases ?? 0,
+      totalTestCases: response.data.totalTestCases ?? 0,
+      runtime: response.data.runtime ?? 0,
+      memory: response.data.memory ?? 0,
+      error: response.data.errorMessage || null
+    });
+  } catch (error) {
+    console.error("Error submitting code:", error);
+    // Logic: Display error directly in the Submission Result tab
+    setSubmitResult({
+      accepted: false,
+      passedTestCases: 0,
+      totalTestCases: 0,
+      runtime: 0,
+      memory: 0,
+      error: "Internal server error"
+    });
+  } finally {
+    setLoading(false);
+    setActiveRightTab("result");
+  }
+};
+
 
   const getLanguageForMonaco = (lang) => {
     switch (lang) {
@@ -453,7 +475,7 @@ const ProblemPage = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </div>
-                        <h4 className="font-bold text-lg text-red-500">Test Failed</h4>
+                        <h4 className="font-bold text-lg text-red-500">{runResult.error}</h4>
                       </div>
                       <div className="space-y-3">
                         {runResult.testCases.map((tc, i) => (
@@ -523,10 +545,12 @@ const ProblemPage = () => {
                         </div>
                         <h4 className="font-bold text-xl text-red-500 wrap-break-words">{submitResult.error}</h4>
                       </div>
-                      <div className="bg-base-200/50 rounded-lg p-4 border border-base-300/50">
-                        <p className="text-xs text-base-content/60 mb-1">Test Cases Passed</p>
-                        <p className="text-2xl font-bold text-base-content">{submitResult.passedTestCases}/{submitResult.totalTestCases}</p>
-                      </div>
+                      {submitResult.error !== "Internal server error" && (
+                        <div className="bg-base-200/50 rounded-lg p-4 border border-base-300/50">
+                          <p className="text-xs text-base-content/60 mb-1">Test Cases Passed</p>
+                          <p className="text-2xl font-bold text-base-content">{submitResult.passedTestCases}/{submitResult.totalTestCases}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

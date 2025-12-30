@@ -112,8 +112,24 @@ const submitCode = async (req,res)=>{
     });
        
     }
-    catch(err){
-      res.status(500).send("Internal Server Error "+ err);
+    catch (err) {
+      const message = err.message?.toLowerCase() || "";
+
+      if (message.includes("quota") || message.includes("limit")) {
+        return res.status(503).json({
+          accepted: false,
+          errorType: "JUDGE_LIMIT",
+          message: "Code execution service daily limit reached. Please try again later.",
+          testCases: []
+        });
+      }
+
+      return res.status(500).json({
+        accepted: false,
+        errorType: "INTERNAL",
+        message: "Internal server error while submitting solution",
+        testCases: []
+      });
     }
 }
 
@@ -187,9 +203,31 @@ const runCode = async(req,res)=>{
    });
       
    }
-   catch(err){
-     res.status(500).send("Internal Server Error "+ err);
-   }
+   catch (err) {
+
+    const message = err.message?.toLowerCase() || "";
+
+    if (message.includes("quota") || message.includes("limit")) {
+      return res.status(503).json({
+        success: false,
+        errorType: "JUDGE_LIMIT",
+        message: "Code execution service daily limit reached. Please try again later.",
+        testCases: [],
+        runtime: 0,
+        memory: 0
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      errorType: "INTERNAL",
+      message: "Internal server error while running code",
+      testCases: [],
+      runtime: 0,
+      memory: 0
+    });
+  }
+
 }
 
 
