@@ -58,12 +58,25 @@ function Problems() {
   }, [user]);
 
   const filtered = problems.filter(p => {
-    const dMatch = filters.difficulty === 'all' || p.difficulty === filters.difficulty;
-    const tMatch = filters.tag === 'all' || p.tags === filters.tag;
-    const sMatch = filters.status === 'all' || (filters.status === 'solved' && solvedProblems.some(sp => sp._id === p._id));
-    const searchMatch = p.title.toLowerCase().includes(search.toLowerCase());
+    const dMatch =
+      filters.difficulty === 'all' || p.difficulty === filters.difficulty;
+
+    const tMatch =
+      filters.tag === 'all' || p.tags === filters.tag;
+
+    const isSolved = solvedProblems.some(sp => sp._id === p._id);
+
+    const sMatch =
+      filters.status === 'all' ||
+      (filters.status === 'solved' && isSolved) ||
+      (filters.status === 'unsolved' && !isSolved);
+
+    const searchMatch =
+      p.title.toLowerCase().includes(search.toLowerCase());
+
     return dMatch && tMatch && sMatch && searchMatch;
   });
+
 
   const totalPages = Math.ceil(filtered.length / problemsPerPage);
   const currentProblems = filtered.slice((currentPage - 1) * problemsPerPage, currentPage * problemsPerPage);
@@ -153,7 +166,10 @@ function Problems() {
                   <option value="all">{labelMap[filterType]}</option>
 
                   {filterType === 'status' && (
-                    <option value="solved">Solved</option>
+                    <>
+                      <option value="solved">Solved</option>
+                      <option value="unsolved">Unsolved</option>
+                    </>
                   )}
 
                   {filterType === 'difficulty' && (
