@@ -13,7 +13,7 @@ function OTPVerification() {
   const navigate = useNavigate();
 
   const {
-    pendingVerificationUserId,
+    pendingVerificationEmail,
     loading,
     resendLoading,
     error,
@@ -23,15 +23,15 @@ function OTPVerification() {
   // Security: Redirect to signup if no user is pending verification
   // Note: This now works on refresh because we initialize state from localStorage
   useEffect(() => {
-    if (!pendingVerificationUserId) {
+    if (!pendingVerificationEmail) {
       navigate("/signup");
     }
-  }, [pendingVerificationUserId, navigate]);
+  }, [pendingVerificationEmail, navigate]);
 
   // Navigate to home upon successful authentication
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/home");
+      navigate("/homePage");
     }
   }, [isAuthenticated, navigate]);
 
@@ -61,15 +61,15 @@ function OTPVerification() {
 
     dispatch(
       verifyOTP({
-        userId: pendingVerificationUserId,
+        email: pendingVerificationEmail,
         otp
       })
     );
   };
 
   const handleResend = () => {
-    if (pendingVerificationUserId) {
-      dispatch(resendOTP(pendingVerificationUserId));
+    if (pendingVerificationEmail) {
+      dispatch(resendOTP(pendingVerificationEmail));
       setTimer(60);
       setCanResend(false);
     }

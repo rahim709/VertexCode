@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../authSlice";
+import { API_BASE_URL } from "../utils/apiBase";
 import { Share2, User, LogOut, LayoutDashboard, Trophy, ShieldCheck } from "lucide-react";
 
 export default function Navbar() {
@@ -57,10 +58,16 @@ export default function Navbar() {
       {/* User Actions - StopPropagation prevents clicking background through the dropdown */}
       <div className="flex-none gap-2" onClick={(e) => e.stopPropagation()}>
         <div className="dropdown dropdown-end">
-          <label tabIndex={0} className="btn btn-ghost btn-circle avatar placeholder border border-base-300">
-            <div className="bg-neutral text-neutral-content rounded-full w-10 flex items-center justify-center">
-              {user ? (
-                <span className="text-sm uppercase">{user.firstName?.charAt(0)}</span>
+          <label tabIndex={0} className="btn btn-ghost btn-circle avatar border border-base-300">
+            <div className={`rounded-full w-10 flex items-center justify-center overflow-hidden ${user?.avatarUrl ? '' : 'bg-neutral text-neutral-content'}`}>
+              {user?.avatarUrl ? (
+                <img
+                  src={`${API_BASE_URL}${user.avatarUrl}`}
+                  alt={user?.lastName || "Avatar"}
+                  className="w-full h-full object-cover"
+                />
+              ) : user ? (
+                <span className="text-sm uppercase">{user.lastName?.charAt(0) || user.firstName?.charAt(0)}</span>
               ) : (
                 <User className="w-5 h-5" />
               )}
@@ -68,7 +75,7 @@ export default function Navbar() {
           </label>
           <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 mt-3 p-2 shadow-xl rounded-box w-52 border border-base-200">
             <li className="menu-title px-4 py-2 text-xs font-bold uppercase opacity-50">
-              {user ? `Hi, ${user.firstName}` : "Account"}
+              {user ? `Hi, ${user.lastName || user.firstName}` : "Account"}
             </li>
             
             {user ? (

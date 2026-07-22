@@ -11,6 +11,23 @@ const getLanguageById = (lang)=>{
     return language[lang.toLowerCase()];
 }
 
+// Pick the first available RapidAPI key from env
+const getApiKey = () => {
+    return process.env.X_RAPID_API_KEY ||
+           process.env.X_RAPID_API_KEY_1 ||
+           process.env.X_RAPID_API_KEY_2 ||
+           process.env.X_RAPID_API_KEY_3 ||
+           '';
+};
+
+const getHostKey = () => {
+    return process.env.X_RAPID_HOST_KEY ||
+           process.env.X_RAPID_HOST_KEY_1 ||
+           process.env.X_RAPID_HOST_KEY_2 ||
+           process.env.X_RAPID_HOST_KEY_3 ||
+           'judge0-ce.p.rapidapi.com';
+};
+
 
 const submitBatch = async (submissions) => {
   try {
@@ -20,8 +37,8 @@ const submitBatch = async (submissions) => {
         {
             params: { base64_encoded: "false" },
             headers: {
-            "x-rapidapi-key": process.env.X_RAPID_API_KEY,
-            "x-rapidapi-host": process.env.X_RAPID_HOST_KEY,
+            "x-rapidapi-key": getApiKey(),
+            "x-rapidapi-host": getHostKey(),
             "Content-Type": "application/json"
             }
         }
@@ -49,8 +66,8 @@ const submitToken = async (resultToken) => {
         fields: "*"
         },
         headers: {
-        "x-rapidapi-key": process.env.X_RAPID_API_KEY,
-        "x-rapidapi-host": process.env.X_RAPID_HOST_KEY
+        "x-rapidapi-key": getApiKey(),
+        "x-rapidapi-host": getHostKey()
         }
     };
 

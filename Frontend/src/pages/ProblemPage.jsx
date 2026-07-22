@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosClient from "../utils/axiosClient"
 import SubmissionHistory from "../components/SubmissionHistory"
 import Editorial from '../components/Editorial';
@@ -13,130 +13,128 @@ const langMap = {
   javascript: 'javascript'
 };
 
+const fetchProblem = async (problemId) => {
+  const { data } = await axiosClient.get(`/problem/problemById/${problemId}`);
+  const initialCodeMap = {};
+  Object.keys(langMap).forEach(key => {
+    const found = data.startCode.find(sc => sc.language === langMap[key]);
+    initialCodeMap[key] = found ? found.initialCode : '';
+  });
+  return { problem: data, initialCodeMap };
+};
+
 const ProblemPage = () => {
-  const [problem, setProblem] = useState(null);
-  const [selectedLanguage, setSelectedLanguage] = useState('javascript');
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('cpp');
+  const [codeMap, setCodeMap] = useState({});
+  const [isLangTransitioning, setIsLangTransitioning] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
   const [activeLeftTab, setActiveLeftTab] = useState('description');
   const [activeRightTab, setActiveRightTab] = useState('code');
   const editorRef = useRef(null);
+  const queryClient = useQueryClient();
   let {problemId}  = useParams();
 
-  const { handleSubmit } = useForm();
+  const { data: problemData, isLoading } = useQuery({
+    queryKey: ['problem', problemId],
+    queryFn: () => fetchProblem(problemId),
+    enabled: !!problemId,
+  });
 
-  useEffect(() => {
-    const fetchProblem = async () => {
-      setLoading(true);
-      try {
-        const response = await axiosClient.get(`/problem/problemById/${problemId}`);
-        const initialCode = response.data.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
-        setProblem(response.data);
-        setCode(initialCode);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching problem:', error);
-        setLoading(false);
-      }
-    };
-    fetchProblem();
-  }, [problemId]);
+  const problem = problemData?.problem || null;
+  const baseCodeMap = problemData?.initialCodeMap || {};
 
-  useEffect(() => {
-    if (problem) {
-      const initialCode = problem.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
-      setCode(initialCode);
-    }
-  }, [selectedLanguage, problem]);
+  const runMutation = useMutation({
+    mutationFn: ({ code, language }) => axiosClient.post(`/submission/run/${problemId}`, { code, language }),
+    onSuccess: (response) => {
+      setRunResult({
+        success: response.data.success ?? false,
+        runtime: response.data.runtime ?? 0,
+        memory: response.data.memory ?? 0,
+        testCases: Array.isArray(response.data.testCases) ? response.data.testCases : [],
+        error: null
+      });
+    },
+    onError: (error) => {
+      console.error("Error running code:", error);
+      setRunResult({
+        success: false,
+        error: "Internal server error",
+        testCases: []
+      });
+    },
+    onSettled: () => {
+      setActiveRightTab("testcase");
+    },
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: ({ code, language }) => axiosClient.post(`/submission/submit/${problemId}`, { code, language }),
+    onSuccess: (response) => {
+      setSubmitResult({
+        accepted: !!response.data.accepted,
+        passedTestCases: response.data.passedTestCases ?? 0,
+        totalTestCases: response.data.totalTestCases ?? 0,
+        runtime: response.data.runtime ?? 0,
+        memory: response.data.memory ?? 0,
+        error: response.data.errorMessage || null
+      });
+      queryClient.invalidateQueries({ queryKey: ['submissions', problemId] });
+      queryClient.invalidateQueries({ queryKey: ['problems'] });
+      queryClient.invalidateQueries({ queryKey: ['profileStats'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+    onError: (error) => {
+      console.error("Error submitting code:", error);
+      setSubmitResult({
+        accepted: false,
+        passedTestCases: 0,
+        totalTestCases: 0,
+        runtime: 0,
+        memory: 0,
+        error: "Internal server error"
+      });
+    },
+    onSettled: () => {
+      setActiveRightTab("result");
+    },
+  });
 
   const handleEditorChange = (value) => {
-    setCode(value || '');
+    setCodeMap(prev => ({ ...prev, [selectedLanguage]: value || '' }));
+  };
+
+  const handleLanguageChange = (language) => {
+    if (language === selectedLanguage) return;
+    setIsLangTransitioning(true);
+    setTimeout(() => {
+      setSelectedLanguage(language);
+      setTimeout(() => setIsLangTransitioning(false), 50);
+    }, 150);
   };
 
   const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
   };
 
-  const handleLanguageChange = (language) => {
-    setSelectedLanguage(language);
+  const currentCode = codeMap[selectedLanguage] ?? baseCodeMap[selectedLanguage] ?? '';
+  const loading = runMutation.isPending || submitMutation.isPending;
+
+  const handleRun = () => {
+    if (!currentCode || !currentCode.trim()) {
+      return alert("Please write some code before running.");
+    }
+    setRunResult(null);
+    runMutation.mutate({ code: currentCode, language: selectedLanguage });
   };
 
-  const handleRun = async () => {
-  if (!code || !code.trim()) {
-    return alert("Please write some code before running.");
-  }
-
-  setLoading(true);
-  setRunResult(null);
-
-  try {
-    const response = await axiosClient.post(
-      `/submission/run/${problemId}`,
-      { code, language: selectedLanguage }
-    );
-
-    setRunResult({
-      success: response.data.success ?? false,
-      runtime: response.data.runtime ?? 0,
-      memory: response.data.memory ?? 0,
-      testCases: Array.isArray(response.data.testCases) ? response.data.testCases : [],
-      error: null
-    });
-  } catch (error) {
-    console.error("Error running code:", error);
-    // Logic: Display error directly in the Test Results tab
-    setRunResult({
-      success: false,
-      error: "Internal server error",
-      testCases: [] 
-    });
-  } finally {
-    setLoading(false);
-    setActiveRightTab("testcase");
-  }
-};
-
-
-  const handleSubmitCode = async () => {
-  if (!code || !code.trim()) {
-    return alert("Please write some code before submitting.");
-  }
-
-  setLoading(true);
-  setSubmitResult(null);
-
-  try {
-    const response = await axiosClient.post(
-      `/submission/submit/${problemId}`,
-      { code, language: selectedLanguage }
-    );
-
-    setSubmitResult({
-      accepted: !!response.data.accepted,
-      passedTestCases: response.data.passedTestCases ?? 0,
-      totalTestCases: response.data.totalTestCases ?? 0,
-      runtime: response.data.runtime ?? 0,
-      memory: response.data.memory ?? 0,
-      error: response.data.errorMessage || null
-    });
-  } catch (error) {
-    console.error("Error submitting code:", error);
-    // Logic: Display error directly in the Submission Result tab
-    setSubmitResult({
-      accepted: false,
-      passedTestCases: 0,
-      totalTestCases: 0,
-      runtime: 0,
-      memory: 0,
-      error: "Internal server error"
-    });
-  } finally {
-    setLoading(false);
-    setActiveRightTab("result");
-  }
-};
+  const handleSubmitCode = () => {
+    if (!currentCode || !currentCode.trim()) {
+      return alert("Please write some code before submitting.");
+    }
+    setSubmitResult(null);
+    submitMutation.mutate({ code: currentCode, language: selectedLanguage });
+  };
 
 
   const getLanguageForMonaco = (lang) => {
@@ -157,7 +155,7 @@ const ProblemPage = () => {
     }
   };
 
-  if (loading && !problem) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-base-100">
         <div className="flex flex-col items-center gap-4">
@@ -335,9 +333,9 @@ const ProblemPage = () => {
               <div className="flex justify-between items-center px-4 py-3 border-b border-base-300/50 bg-base-200/30 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2 whitespace-nowrap">
                   {[
-                    { id: 'javascript', label: 'JavaScript' },
+                    { id: 'cpp', label: 'C++' },
                     { id: 'java', label: 'Java' },
-                    { id: 'cpp', label: 'C++' }
+                    { id: 'javascript', label: 'JavaScript' }
                   ].map((lang) => (
                     <button
                       key={lang.id}
@@ -355,11 +353,11 @@ const ProblemPage = () => {
               </div>
 
               {/* Monaco Editor Container */}
-              <div className="flex-1 relative min-h-0">
+              <div className={`flex-1 relative min-h-0 transition-opacity duration-200 ease-in-out ${isLangTransitioning ? 'opacity-0' : 'opacity-100'}`}>
                 <Editor
                   height="100%"
                   language={getLanguageForMonaco(selectedLanguage)}
-                  value={code}
+                  value={currentCode}
                   onChange={handleEditorChange}
                   onMount={handleEditorDidMount}
                   theme="vs-dark"

@@ -1,35 +1,25 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import axiosClient from '../utils/axiosClient'
+import { useQuery } from '@tanstack/react-query';
+
+const fetchProblems = async () => {
+  const { data } = await axiosClient.get('/problem/getAllProblem');
+  return data;
+};
 
 const AdminUpdate = () => {
-  const [problems, setProblems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchProblems();
-  }, []);
-
-  const fetchProblems = async () => {
-    try {
-      setLoading(true);
-      const { data } = await axiosClient.get('/problem/getAllProblem');
-      setProblems(data);
-    } catch (err) {
-      setError('Failed to fetch problems');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: problems = [], isLoading, error } = useQuery({
+    queryKey: ['problems'],
+    queryFn: fetchProblems,
+  });
 
   const handleUpdate = (id) => {
-    navigate(`/problem/update/${id}`);
+    navigate(`/admin/update/${id}`);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <span className="loading loading-spinner loading-lg"></span>
@@ -44,7 +34,7 @@ const AdminUpdate = () => {
           <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>{error}</span>
+          <span>{error.message || 'Failed to fetch problems'}</span>
         </div>
       </div>
     );

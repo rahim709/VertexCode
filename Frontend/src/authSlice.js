@@ -7,7 +7,7 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await axiosClient.post('/user/register', userData);
-      return response.data; // { message, userId }
+      return response.data; // { message, email }
     } catch (error) {
       const message = error.response?.data?.message || "Registration failed";
       return rejectWithValue(message);
@@ -18,9 +18,9 @@ export const registerUser = createAsyncThunk(
 // New: Resend OTP Thunk
 export const resendOTP = createAsyncThunk(
   'auth/resendOTP',
-  async (userId, { rejectWithValue }) => {
+  async (email, { rejectWithValue }) => {
     try {
-      const response = await axiosClient.post('/user/resendOTP', { userId });
+      const response = await axiosClient.post('/user/resendOTP', { email });
       return response.data;
     } catch (error) {
       const message = error.response?.data?.message || "Failed to resend OTP";
@@ -31,9 +31,9 @@ export const resendOTP = createAsyncThunk(
 
 export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
-  async ({ userId, otp }, { rejectWithValue }) => {
+  async ({ email, otp }, { rejectWithValue }) => {
     try {
-      const response = await axiosClient.post('/user/verifyOTP', { userId, otp });
+      const response = await axiosClient.post('/user/verifyOTP', { email, otp });
       return response.data.user;
     } catch (error) {
       const message = error.response?.data?.message || "OTP verification failed";
@@ -88,7 +88,8 @@ const authSlice = createSlice({
     loading: false,
     error: null,
     authChecked: false,
-    pendingVerificationUserId: localStorage.getItem("pendingUserId") || null
+    pendingVerificationEmail: localStorage.getItem("pendingEmail") || null,
+    isNewlyRegistered: false
   },
   reducers: {
     resetError: (state) => {
@@ -99,8 +100,8 @@ const authSlice = createSlice({
       state.user = action.payload;
     },
     clearPendingUser: (state) => {
-      state.pendingVerificationUserId = null;
-      localStorage.removeItem("pendingUserId");
+      state.pendingVerificationEmail = null;
+      localStorage.removeItem("pendingEmail");
     }
   },
   extraReducers: (builder) => {
@@ -113,9 +114,9 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
         state.authChecked = true; 
-        state.pendingVerificationUserId = action.payload.userId;
-        // Persist the ID so refresh doesn't break the flow
-        localStorage.setItem("pendingUserId", action.payload.userId);
+        state.pendingVerificationEmail = action.payload.email;
+        // Persist the email so refresh doesn't break the flow
+        localStorage.setItem("pendingEmail", action.payload.email);
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
@@ -154,9 +155,10 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = !!action.payload;
         state.user = action.payload;
-        state.pendingVerificationUserId = null;
+        state.pendingVerificationEmail = null;
         state.authChecked = true;
-        localStorage.removeItem("pendingUserId");
+        state.isNewlyRegistered = true;
+        localStorage.removeItem("pendingEmail");
       })
 
       .addCase(verifyOTP.rejected, (state, action) => {
@@ -176,6 +178,7 @@ const authSlice = createSlice({
         state.isAuthenticated = !!action.payload;
         state.user = action.payload;
         state.authChecked = true;
+        state.isNewlyRegistered = false;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -197,6 +200,7 @@ const authSlice = createSlice({
         state.isAuthenticated = !!action.payload;
         state.user = action.payload;
         state.authChecked = true;
+        state.isNewlyRegistered = false;
       })
       .addCase(checkAuth.rejected, (state, action) => {
         state.loading = false;
@@ -219,7 +223,8 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
         state.error = null;
-        state.authChecked = true;   
+        state.authChecked = true;
+        state.isNewlyRegistered = false;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;

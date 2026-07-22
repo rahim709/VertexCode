@@ -37,8 +37,7 @@ const userSchema = new Schema({
         type:[{
             type:Schema.Types.ObjectId,
             ref:'problem'
-        }],
-        unique:true
+        }]
     },
     password:{
         type:String,
@@ -48,20 +47,30 @@ const userSchema = new Schema({
     summary:{
         type:String
     },
+    avatarUrl:{
+        type:String,
+        default:''
+    },
     isVerified:{
         type:Boolean,
         default:false
-    },
-    verificationCode:{
-        type:String
-    },
-    verificationExpiry: {
-        type: Date,
-        expires: 300
     }
 
 },{
     timestamps:true
+});
+
+// Deduplicate problemSolved array before saving
+userSchema.pre('save', function(){
+    if(this.isModified('problemSolved')){
+        const seen = new Set();
+        this.problemSolved = this.problemSolved.filter(id => {
+            const str = id.toString();
+            if(seen.has(str)) return false;
+            seen.add(str);
+            return true;
+        });
+    }
 });
 
 //this will always run after this await User.findByIdAndDelete(userId);

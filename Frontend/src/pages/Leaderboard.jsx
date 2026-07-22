@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import axiosClient from '../utils/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Trophy, 
   Medal, 
@@ -12,35 +13,22 @@ import {
   Zap
 } from 'lucide-react';
 
+const fetchLeaderboard = async () => {
+  const { data } = await axiosClient.get('/problem/getLeaderboard');
+  return data;
+};
+
 export default function Leaderboard() {
-  const [leaders, setLeaders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: leaders = [], isLoading, error } = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: fetchLeaderboard,
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // --- Animation State ---
-  const [isVisible, setIsVisible] = useState(false);
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        setLoading(true);
-        const { data } = await axiosClient.get('problem/getLeaderboard');
-        setLeaders(data);
-        setTimeout(() => setIsVisible(true), 100);
-      } catch (err) {
-        console.error("Leaderboard fetch error:", err);
-        setError("Failed to load rankings. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeaderboard();
-  }, []);
 
   // Filter logic
   const filteredLeaders = leaders.filter(leader => 
@@ -53,15 +41,28 @@ export default function Leaderboard() {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentTableItems = filteredLeaders.slice(startIndex, startIndex + itemsPerPage);
-  
+
   // Top 3 for the Podium - Static from original array
   const topThree = leaders.slice(0, 3);
 
-  if (loading) {
+  const isVisible = true;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-base-200 pt-32 text-center">
         <span className="loading loading-ring loading-lg text-primary"></span>
         <p className="mt-4 text-base-content/50 animate-pulse uppercase tracking-widest text-xs font-bold">Syncing Leaderboard</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-base-200 pt-32 text-center px-4">
+        <div className="alert alert-error max-w-md mx-auto">
+          <AlertCircle className="w-5 h-5" />
+          <span>Failed to load leaderboard. Please try again later.</span>
+        </div>
       </div>
     );
   }

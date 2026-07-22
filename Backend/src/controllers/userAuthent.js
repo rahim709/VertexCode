@@ -6,27 +6,31 @@ const jwt = require('jsonwebtoken');
 const redisClient = require('../config/redis');
 const Submission = require('../models/submission');
 const sendOTPEmail = require('../services/emailService');
+const fs = require('fs');
+const path = require('path');
+
+// Cookie options: secure only in production so local HTTP dev works
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 60 * 60 * 1000,
+};
 
 //Register
 const register = async (req, res) => {
   try {
     validate(req.body);
 
-    const { firstName, emailId, password } = req.body;
+    const { firstName, emailId: rawEmail, password } = req.body;
+    const emailId = rawEmail.toLowerCase();
 
-    //  Check existing user
+    //  Check existing verified user
     const existingUser = await User.findOne({ emailId });
-
     if (existingUser) {
-      // Case 1: User exists but NOT verified then delete & allow re-register
-      if (!existingUser.isVerified) {
-        await User.deleteOne({ _id: existingUser._id });
-      } else {
-        //  Case 2: Already verified
-        return res.status(400).json({
-          message: "User already exists. Please login."
-        });
-      }
+      return res.status(400).json({
+        message: "User already exists. Please login."
+      });
     }
 
     // Hash password
@@ -36,23 +40,26 @@ const register = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
-    //  Create new user
-    const user = await User.create({
+    // Store pending user data + OTP in Redis (overwrite if re-registering)
+    const client = redisClient();
+    const pendingKey = `pendingUser:${emailId}`;
+    const otpKey = `otp:${emailId}`;
+
+    await client.setEx(pendingKey, 300, JSON.stringify({
       firstName,
       emailId,
       password: hashedPassword,
-      verificationCode: hashedOtp,
-      verificationExpiry: Date.now() + 5 * 60 * 1000, // 5 minutes, // TTL starts
-      isVerified: false,
       role: "user"
-    });
+    }));
+
+    await client.setEx(otpKey, 300, hashedOtp);
 
     //  Send OTP
     await sendOTPEmail(emailId, otp);
 
     res.status(201).json({
       message: "OTP sent to your email. Please verify.",
-      userId: user._id
+      email: emailId
     });
 
   } catch (err) {
@@ -69,7 +76,8 @@ const register = async (req, res) => {
 //login
 const login = async (req, res) => {
   try {
-    const { emailId, password } = req.body;
+    const { emailId: rawEmail, password } = req.body;
+    const emailId = rawEmail.toLowerCase();
 
     if (!emailId || !password) {
       return res.status(401).json({
@@ -104,12 +112,7 @@ const login = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 60 * 60 * 1000,
-    });
+    res.cookie("token", token, cookieOptions);
 
     res.status(200).json({
       user: {
@@ -120,6 +123,7 @@ const login = async (req, res) => {
         role: user.role,
         summary: user.summary,
         age: user.age,
+        avatarUrl: user.avatarUrl,
         count: user.problemSolved.length
       },
       message: "Login successful"
@@ -138,19 +142,23 @@ const logout = async(req, res)=>{
     try{
         const {token} = req.cookies;
 
-        const payload = jwt.decode(token);
+        if(token){
+            const payload = jwt.verify(token, process.env.JWT_KEY);
 
-        // await redisClient.set(`token:${token}`,'Blocked');
-        // await redisClient.expireAt(`token:${token}`,payload.exp);
-        //  after logout we will add that token it into blocklist  with the help of Redis
-        //  Cookies ko clear kar dena hai
+            // Blacklist token in Redis until its natural expiry
+            const client = redisClient();
+            if(client.isOpen){
+                await client.set(`token:${token}`, 'Blocked');
+                await client.expireAt(`token:${token}`, payload.exp);
+            }
+        }
 
-        res.cookie("token",null, {expires:new Date(Date.now())});
-        res.send("Logged Out succesfully");
+        res.cookie("token", "", { ...cookieOptions, maxAge: 0 });
+        res.status(200).json({ message: "Logged Out successfully" });
 
     }
     catch(err){
-        res.status(503).send("Error: "+err);
+        res.status(503).json({ message: "Error: "+err.message });
     }
 }
 
@@ -162,29 +170,32 @@ const adminRegister = async(req, res)=>{
         //validate the user
         validate(req.body);
 
-        const {firstName, emailId, password} = req.body;
+        const {firstName, emailId: rawEmail, password} = req.body;
+        const emailId = rawEmail.toLowerCase();
         
         //email already exists or not
         // const ans = await User.exists({emailId});
         // if(ans) console.log("User exists");
         // else console.log("No such user");
         
-        req.body.password = await bcrypt.hash(password,10);
+        const hashedPassword = await bcrypt.hash(password,10);
 
-        const user = await User.create(req.body);
+        // Sanitize: only allow intended fields, force admin role
+        const user = await User.create({
+            firstName,
+            emailId,
+            password: hashedPassword,
+            role: 'admin',
+            isVerified: true
+        });
         const token = jwt.sign({_id:user._id,emailId:user.emailId,role:user.role},process.env.JWT_KEY,{ expiresIn: '1h' })  //or 60*60
         
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 60 * 60 * 1000, // 1 hour
-        });
+        res.cookie("token", token, cookieOptions);
 
-        res.status(201).send("User Registered Successfully");
+        res.status(201).json({ message: "User Registered Successfully" });
     }
     catch(err){
-        res.status(400).send("Error "+err);
+        res.status(400).json({ message: "Error "+err.message });
     }
 
 }
@@ -207,7 +218,7 @@ const deleteProfile = async(req, res)=>{
 
     }
     catch(err){
-        res.status(500).send("Deleted Successfully");
+        res.status(500).json({ message: "Failed to delete profile" });
     }
 }
 
@@ -215,38 +226,102 @@ const deleteProfile = async(req, res)=>{
 const updateProfile = async (req, res) => {
   try {
     const userId = req.result._id;
-    const { firstName, lastName, age, summary } = req.body;
+    const { firstName, lastName, age, summary, removeAvatar } = req.body;
 
     // Validate required
     if (!firstName || firstName.trim().length < 3) {
-      return res.status(400).json({ msg: "Username must be at least 3 chars" });
+      return res.status(400).json({ message: "Username must be at least 3 chars" });
     }
 
     if (!lastName || lastName.trim().length < 3) {
-      return res.status(400).json({ msg: "Username must be at least 3 chars" });
+      return res.status(400).json({ message: "Name must be at least 3 chars" });
     }
-    
+
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updateFields = {
+      firstName: firstName.trim(),
+      lastName: lastName?.trim(),
+      age,
+      summary,
+    };
+
+    // Handle avatar file upload
+    if (req.file) {
+      // Remove old avatar if exists
+      if (existingUser.avatarUrl) {
+        const oldPath = path.join(__dirname, '../../', existingUser.avatarUrl);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      updateFields.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    }
+
+    // Handle avatar removal request
+    if (removeAvatar === 'true' || removeAvatar === true) {
+      if (existingUser.avatarUrl) {
+        const oldPath = path.join(__dirname, '../../', existingUser.avatarUrl);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      updateFields.avatarUrl = '';
+    }
+
     const updated = await User.findByIdAndUpdate(
       userId,
-      {
-        firstName: firstName.trim(),
-        lastName: lastName?.trim(),
-        age,
-        summary,
-      },
+      updateFields,
       { new: true, runValidators: true }
     ).select("-password"); // do not send password
 
-    // console.log(updated);
     res.status(200).json({
-      msg: "Profile updated successfully",
-      user: updated,
+      message: "Profile updated successfully",
+      user: {
+        ...updated.toObject(),
+        count: updated.problemSolved?.length || 0
+      },
     });
 
   } catch (err) {
-    res.status(500).json({ msg: "Internal Error", err });
+    res.status(500).json({ message: "Internal Error", err: err.message });
+  }
+};
+
+// Delete avatar only
+const deleteAvatar = async (req, res) => {
+  try {
+    const userId = req.result._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.avatarUrl) {
+      const filePath = path.join(__dirname, '../../', user.avatarUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    user.avatarUrl = '';
+    await user.save();
+
+    res.status(200).json({
+      message: "Avatar removed successfully",
+      user: {
+        ...user.toObject(),
+        count: user.problemSolved?.length || 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Internal Error", err: err.message });
   }
 };
 
 
-module.exports = {register, login, logout, adminRegister, deleteProfile, updateProfile};
+module.exports = {register, login, logout, adminRegister, deleteProfile, updateProfile, deleteAvatar};

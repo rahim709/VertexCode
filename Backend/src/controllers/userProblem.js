@@ -73,6 +73,12 @@ const createProblem = async (req, res)=>{
         res.status(201).send("Problem Saved Successfully");
     }
     catch(err){
+        const message = err.message || "";
+        if (message.toLowerCase().includes("invalid api key")) {
+            return res.status(503).json({
+                message: "Judge0 API key is invalid. Please check your RapidAPI key configuration."
+            });
+        }
         res.status(400).send("Error "+err);
     }
 }
@@ -82,16 +88,10 @@ const updateProblem = async(req, res)=>{
 
     const {id} = req.params;
     const {
-        title,
-        description, 
-        difficulty, 
-        tags, 
-        visibleTestCases,
-        hiddenTestCases,
-        startCode,
-        referenceSolution,
-        problemCreator
+        problemCreator,
+        ...updateData
     } = req.body;
+    const { referenceSolution, visibleTestCases } = updateData;
     try{
         if(!id){
             return res.status(400).send("Missing ID Field");
@@ -111,7 +111,7 @@ const updateProblem = async(req, res)=>{
             // stdin
             // expected output
 
-            const languageId = getLanugageById(language);
+            const languageId = getLanguageById(language);
 
             const submissions = visibleTestCases.map((testcase)=>({
 
@@ -148,12 +148,20 @@ const updateProblem = async(req, res)=>{
         //now we can store our result in database
 
         // new:true means updated documents return krke dena
-        const newProblem = await Problem.findByIdAndUpdate(id,{...req.body}, {runValidators:true, new:true}); //runValidators means check all the edge cases when we created DB
+        const newProblem = await Problem.findByIdAndUpdate(id, updateData, {runValidators:true, new:true}); //runValidators means check all the edge cases when we created DB
 
         res.status(201).send(newProblem);
     }
     catch(err){
-        res.status(500).send("Error "+err);
+        console.error("UPDATE PROBLEM ERROR:", err);
+        console.error("UPDATE PROBLEM STACK:", err.stack);
+        const message = err.message || "";
+        if (message.toLowerCase().includes("invalid api key")) {
+            return res.status(503).json({
+                message: "Judge0 API key is invalid. Please check your RapidAPI key configuration."
+            });
+        }
+        res.status(500).json({ message: "Error: " + err.message });
     }
 }
 
@@ -189,7 +197,11 @@ const getProblemById = async(req, res)=>{
         if(!id)
             return res.status(400).send("ID is Missing");
 
-        const getProblem = await Problem.findById(id).select('_id title description difficulty tags visibleTestCases startCode referenceSolution ');
+        let query = Problem.findById(id);
+        if (req.result.role !== 'admin') {
+            query = query.select('-hiddenTestCases -problemCreator');
+        }
+        const getProblem = await query;
 
         if(!getProblem)
             return res.status(404).send("Problem is Missing");
@@ -252,7 +264,7 @@ const submittedProblem = async(req, res)=>{
         const ans = await Submission.find({userId,problemId});
 
         if(!ans.length)
-            res.status(200).send("No submission is present");
+            return res.status(200).send("No submission is present");
 
         res.status(200).send(ans);
 

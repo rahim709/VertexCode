@@ -17,6 +17,8 @@ import Leaderboard from "./pages/Leaderboard";
 import Admin from "./pages/Admin";
 import AdminPanel from "./components/AdminPanel";
 import AdminDelete from "./components/AdminDelete";
+import AdminUpdate from "./components/AdminUpdate";
+import UpdateProblem from "./components/UpdateProblem";
 
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
@@ -30,7 +32,7 @@ function App() {
     isAuthenticated,
     user,
     authChecked,
-    pendingVerificationUserId,
+    pendingVerificationEmail,
   } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -40,11 +42,13 @@ function App() {
   // Logic: List of valid routes to determine Navbar visibility
   const validPaths = [
     "/", "/homePage", "/signup", "/login", "/verify-otp", 
-    "/problems", "/MyProfile", "/update-profile", "/leaderboard", "/admin", "/admin/create", "/admin/delete"
+    "/problems", "/MyProfile", "/update-profile", "/leaderboard", "/admin", "/admin/create", "/admin/update", "/admin/delete"
   ];
   
-  // Logic: Identifies if the current URL is invalid or not a dynamic problem page
-  const is404 = !validPaths.includes(location.pathname) && !location.pathname.startsWith("/problem/");
+  // Logic: Identifies if the current URL is invalid or not a dynamic page
+  const is404 = !validPaths.includes(location.pathname) &&
+                !location.pathname.startsWith("/problem/") &&
+                !location.pathname.startsWith("/admin/update/");
 
   if (!authChecked) { 
     return (
@@ -64,7 +68,7 @@ function App() {
         <Route path="/homePage" element={isAuthenticated ? <HomePage /> : <Navigate to="/login" />} />
         <Route path="/signup" element={isAuthenticated ? <Navigate to="/" /> : <Signup />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
-        <Route path="/verify-otp" element={pendingVerificationUserId ? <VerifyOTP /> : <Navigate to="/signup" />} />
+        <Route path="/verify-otp" element={pendingVerificationEmail ? <VerifyOTP /> : <Navigate to="/signup" />} />
 
         <Route path="/problems" element={isAuthenticated ? <Problems /> : <Navigate to="/login" />} />
         <Route path="/problem/:problemId" element={isAuthenticated ? <ProblemPage /> : <Navigate to="/login" />} />
@@ -74,6 +78,8 @@ function App() {
 
         <Route path="/admin" element={isAuthenticated && user?.role === "admin" ? <Admin /> : <Navigate to="/" />} />
         <Route path="/admin/create" element={isAuthenticated && user?.role === "admin" ? <AdminPanel /> : <Navigate to="/" />} />
+        <Route path="/admin/update" element={isAuthenticated && user?.role === "admin" ? <AdminUpdate /> : <Navigate to="/" />} />
+        <Route path="/admin/update/:id" element={isAuthenticated && user?.role === "admin" ? <UpdateProblem /> : <Navigate to="/" />} />
         <Route path="/admin/delete" element={isAuthenticated && user?.role === "admin" ? <AdminDelete /> : <Navigate to="/" />} />
 
         {/* --- CATCH-ALL 404 ERROR ROUTE --- */}

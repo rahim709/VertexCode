@@ -73,11 +73,11 @@ const submitCode = async (req,res)=>{
            memory = Math.max(memory,test.memory);
         }else{
           if(test.status_id==4){
-            status = 'error'
+            status = 'wrong'
             errorMessage = test.stderr
           }
           else{
-            status = 'wrong'
+            status = 'error'
             errorMessage = test.stderr
           }
         }
@@ -93,11 +93,11 @@ const submitCode = async (req,res)=>{
 
     await submittedResult.save();
     
-    // ProblemId ko insert karenge userSchema ke problemSolved mein if it is not persent there.
+    // Only insert problemId into problemSolved when submission is accepted
     
     // req.result == user Information
 
-    if(!req.result.problemSolved.includes(problemId)){
+    if(status === 'accepted' && !req.result.problemSolved.some(id => id.toString() === problemId)){
       req.result.problemSolved.push(problemId);
       await req.result.save();
     }
@@ -114,6 +114,13 @@ const submitCode = async (req,res)=>{
     }
     catch (err) {
       const message = err.message?.toLowerCase() || "";
+
+      // Mark pending submission as error if it was created
+      if (submittedResult) {
+        submittedResult.status = 'error';
+        submittedResult.errorMessage = message || "Execution failed";
+        await submittedResult.save();
+      }
 
       if (message.includes("quota") || message.includes("limit")) {
         return res.status(503).json({

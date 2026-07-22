@@ -30,7 +30,7 @@ function Signup() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { loading, error, pendingVerificationUserId } = useSelector((state) => state.auth);
+  const { loading, error, pendingVerificationEmail } = useSelector((state) => state.auth);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({ 
     resolver: zodResolver(signupSchema),
@@ -41,10 +41,10 @@ function Signup() {
   const passwordValue = watch("password", "");
 
   useEffect(() => {
-    if (pendingVerificationUserId) {
+    if (pendingVerificationEmail) {
       navigate("/verify-otp");
     }
-  }, [pendingVerificationUserId, navigate]);
+  }, [pendingVerificationEmail, navigate]);
 
   useEffect(() => {
     if (error) {

@@ -1,22 +1,49 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import axiosClient from "../utils/axiosClient";
+import { API_BASE_URL } from "../utils/apiBase";
 import { useSelector, useDispatch } from "react-redux";
 import { NavLink } from "react-router";
 import { setUser } from "../authSlice";
-import { User, Edit3, CheckCircle, TrendingUp, BookOpen, AlertCircle, Hash, Share2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { User, Edit3, CheckCircle, TrendingUp, BookOpen, AlertCircle, Hash, Share2, Camera, X } from "lucide-react";
+
+const loadStats = async () => {
+  const [{ data: allProblems }, { data: solvedProblems }, { data: latest }] = await Promise.all([
+    axiosClient.get("/problem/getAllProblem"),
+    axiosClient.get("/problem/correctSubmission"),
+    axiosClient.get("/problem/recentSolved")
+  ]);
+
+  const totalCount = { easy: 0, medium: 0, hard: 0 };
+  allProblems.forEach(p => totalCount[p.difficulty.toLowerCase()]++);
+
+  const solvedCount = { easy: 0, medium: 0, hard: 0 };
+  solvedProblems.forEach(p => solvedCount[p.difficulty.toLowerCase()]++);
+
+  return { recentSolved: latest, total: totalCount, solved: solvedCount };
+};
 
 const MyProfile = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState("");
 
-  const [recentSolved, setRecentSolved] = useState([]);
-  const [total, setTotal] = useState({ easy: 0, medium: 0, hard: 0 });
-  const [solved, setSolved] = useState({ easy: 0, medium: 0, hard: 0 });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['profileStats'],
+    queryFn: loadStats,
+  });
+
+  const recentSolved = stats?.recentSolved || [];
+  const total = stats?.total || { easy: 0, medium: 0, hard: 0 };
+  const solved = stats?.solved || { easy: 0, medium: 0, hard: 0 };
 
   const [form, setForm] = useState({
     firstName: user?.firstName || "",
@@ -25,36 +52,102 @@ const MyProfile = () => {
     age: user?.age || "",
   });
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      const [{ data: allProblems }, { data: solvedProblems }, { data: latest }] = await Promise.all([
-        axiosClient.get("/problem/getAllProblem"),
-        axiosClient.get("/problem/correctSubmission"),
-        axiosClient.get("/problem/recentSolved")
-      ]);
-
-      const totalCount = { easy: 0, medium: 0, hard: 0 };
-      allProblems.forEach(p => totalCount[p.difficulty.toLowerCase()]++);
-
-      const solvedCount = { easy: 0, medium: 0, hard: 0 };
-      solvedProblems.forEach(p => solvedCount[p.difficulty.toLowerCase()]++);
-
-      setRecentSolved(latest);
-      setTotal(totalCount);
-      setSolved(solvedCount);
-      setLoading(false);
-    } catch (err) {
-      setLoading(false);
-    }
+  const openEditModal = () => {
+    setForm({
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      summary: user?.summary || "",
+      age: user?.age || "",
+    });
+    setAvatarFile(null);
+    setAvatarPreview(user?.avatarUrl ? `${API_BASE_URL}${user.avatarUrl}` : null);
+    setRemoveAvatar(false);
+    setEditMode(true);
+    setError("");
   };
 
-  const percentage = (s, t) => (t ? Math.round((s / t) * 100) : 0);
+  const closeEditModal = () => {
+    setEditMode(false);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setRemoveAvatar(false);
+    setError("");
+  };
 
-  const handleUpdate = async () => {
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Only JPG, PNG, and WEBP images are allowed.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image must be smaller than 2MB.");
+      return;
+    }
+
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setRemoveAvatar(false);
+    setError("");
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setRemoveAvatar(true);
+  };
+
+  const updateProfileMutation = useMutation({
+    mutationFn: (payload) => {
+      const formData = new FormData();
+      formData.append("firstName", payload.firstName);
+      formData.append("lastName", payload.lastName);
+      formData.append("age", payload.age);
+      formData.append("summary", payload.summary);
+      if (payload.avatar) {
+        formData.append("avatar", payload.avatar);
+      }
+      if (payload.removeAvatar) {
+        formData.append("removeAvatar", "true");
+      }
+      return axiosClient.put("/user/updateProfile", formData, {
+        headers: { "Content-Type": undefined }
+      });
+    },
+    onSuccess: ({ data }) => {
+      dispatch(setUser(data.user));
+      queryClient.invalidateQueries({ queryKey: ['homeData'] });
+      setEditMode(false);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      setRemoveAvatar(false);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+    },
+    onError: (err) => {
+      const backendError = err.response?.data?.message || "Something went wrong. Please try again.";
+      setError(backendError);
+    },
+  });
+
+  const deleteAvatarMutation = useMutation({
+    mutationFn: () => axiosClient.delete("/user/avatar"),
+    onSuccess: ({ data }) => {
+      dispatch(setUser(data.user));
+      queryClient.invalidateQueries({ queryKey: ['homeData'] });
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+    },
+    onError: (err) => {
+      const backendError = err.response?.data?.message || "Failed to remove avatar.";
+      setError(backendError);
+    },
+  });
+
+  const handleUpdate = () => {
     if (form.firstName.trim().length < 3) {
       setError("Username must be at least 3 characters long.");
       return;
@@ -72,25 +165,15 @@ const MyProfile = () => {
       return;
     }
 
-    try {
-      setError(""); 
-      const { data } = await axiosClient.put("/user/updateProfile", form);
-      dispatch(setUser(data.user));
-      setEditMode(false);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
-    } catch (err) {
-      const backendError = err.response?.data?.message || "Something went wrong. Please try again.";
-      setError(backendError);
-    }
+    setError("");
+    updateProfileMutation.mutate({
+      ...form,
+      avatar: avatarFile,
+      removeAvatar,
+    });
   };
 
-  const closeEditModal = () => {
-    setEditMode(false);
-    setError(""); 
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <span className="loading loading-ring loading-lg text-primary"></span>
@@ -98,22 +181,6 @@ const MyProfile = () => {
       </div>
     );
   }
-
-  const DifficultyProgress = ({ label, color, s, t }) => (
-    <div className="flex flex-col items-center gap-2">
-      <div 
-        className={`radial-progress ${color} bg-base-200 border-4 border-base-200 shadow-inner`} 
-        style={{ "--value": percentage(s, t), "--size": "5rem", "--thickness": "6px" }}
-        role="progressbar"
-      >
-        <span className="text-base-content font-bold text-sm">{percentage(s, t)}%</span>
-      </div>
-      <div className="text-center">
-        <p className="text-xs font-bold uppercase tracking-wider opacity-60">{label}</p>
-        <p className="text-sm font-mono">{s}/{t}</p>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-base-200/50 flex flex-col">
@@ -130,21 +197,39 @@ const MyProfile = () => {
           <div className="lg:col-span-4 space-y-6">
             <div className="card bg-base-100 shadow-xl border border-base-300">
               <div className="card-body items-center text-center">
-                <div className="avatar placeholder mb-4">
-                  <div className="bg-primary text-primary-content rounded-full w-24 ring ring-primary ring-offset-base-100 ring-offset-2 flex items-center justify-center font-bold">
-                    <span className="text-4xl">{user?.firstName?.[0]?.toUpperCase()}</span>
+                <div className="avatar mb-4 relative group">
+                  <div className={`w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden ${user?.avatarUrl ? '' : 'bg-primary text-primary-content flex items-center justify-center font-bold'}`}>
+                    {user?.avatarUrl ? (
+                      <img
+                        src={`${API_BASE_URL}${user.avatarUrl}`}
+                        alt={user?.lastName || "Avatar"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-4xl">{user?.lastName?.[0]?.toUpperCase() || user?.firstName?.[0]?.toUpperCase()}</span>
+                    )}
                   </div>
+                  {user?.avatarUrl && (
+                    <button
+                      onClick={() => deleteAvatarMutation.mutate()}
+                      className="btn btn-circle btn-xs btn-error absolute -bottom-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove avatar"
+                      disabled={deleteAvatarMutation.isPending}
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
                 <h2 className="card-title text-2xl">{user?.lastName || "Coder"}</h2>
                 <div className="flex items-center gap-2">
-                  <p className="text-primary font-bold">@{user?.firstName}</p>
+                  <p className="text-primary font-bold">@{user?.firstName || "Coder"}</p>
                 </div>
                 <div className="divider my-2"></div>
                 <p className="text-sm text-base-content/70 italic leading-relaxed">
                   {user?.summary || "No bio added yet. Tell the world about your coding journey!"}
                 </p>
                 <div className="card-actions w-full mt-6">
-                  <button className="btn btn-outline btn-primary btn-block gap-2" onClick={() => setEditMode(true)}>
+                  <button className="btn btn-outline btn-primary btn-block gap-2" onClick={openEditModal}>
                     <Edit3 size={16} /> Edit Profile
                   </button>
                 </div>
@@ -224,7 +309,42 @@ const MyProfile = () => {
               <span className="text-sm font-bold">{error}</span>
             </div>
           )}
-          
+
+          <div className="flex flex-col items-center gap-3 mb-4">
+            <div className="avatar relative">
+              <div className={`w-20 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden ${avatarPreview || user?.avatarUrl ? '' : 'bg-primary text-primary-content flex items-center justify-center font-bold'}`}>
+                {avatarPreview || user?.avatarUrl ? (
+                  <img
+                    src={avatarPreview || `${API_BASE_URL}${user?.avatarUrl}`}
+                    alt="Avatar preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl">{user?.lastName?.[0]?.toUpperCase() || user?.firstName?.[0]?.toUpperCase()}</span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <label className="btn btn-sm btn-outline btn-primary gap-1 cursor-pointer">
+                <Camera size={14} /> Upload
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/webp"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </label>
+              {(avatarPreview || user?.avatarUrl) && !removeAvatar && (
+                <button
+                  className="btn btn-sm btn-outline btn-error gap-1"
+                  onClick={handleRemoveAvatar}
+                >
+                  <X size={14} /> Remove
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="form-control gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -270,10 +390,35 @@ const MyProfile = () => {
           </div>
 
           <div className="modal-action grid grid-cols-2 gap-3">
-            <button className="btn btn-ghost border-base-300 font-bold uppercase text-xs" onClick={closeEditModal}>Cancel</button>
-            <button className="btn btn-primary font-bold uppercase text-xs" onClick={handleUpdate}>Save Changes</button>
+            <button className="btn btn-ghost border-base-300 font-bold uppercase text-xs" onClick={closeEditModal} disabled={updateProfileMutation.isPending}>Cancel</button>
+            <button
+              className={`btn btn-primary font-bold uppercase text-xs ${updateProfileMutation.isPending ? 'loading' : ''}`}
+              onClick={handleUpdate}
+              disabled={updateProfileMutation.isPending}
+            >
+              {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const DifficultyProgress = ({ label, color, s, t }) => {
+  const percentage = t ? Math.round((s / t) * 100) : 0;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        className={`radial-progress ${color} bg-base-200 border-4 border-base-200 shadow-inner`}
+        style={{ "--value": percentage, "--size": "5rem", "--thickness": "6px" }}
+        role="progressbar"
+      >
+        <span className="text-base-content font-bold text-sm">{percentage}%</span>
+      </div>
+      <div className="text-center">
+        <p className="text-xs font-bold uppercase tracking-wider opacity-60">{label}</p>
+        <p className="text-sm font-mono">{s}/{t}</p>
       </div>
     </div>
   );

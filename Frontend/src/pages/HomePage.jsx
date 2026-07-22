@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { NavLink } from 'react-router';
 import axiosClient from '../utils/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Trophy, 
   PlayCircle, 
@@ -30,98 +30,82 @@ const DAILY_INSIGHTS = [
   // Pick the insight based on the current day of the week (0-6)
 const todayInsight = DAILY_INSIGHTS[new Date().getDay()];
 
+const fetchHomeData = async (user) => {
+  const [leaderboardRes, solvedRes, allProblemsRes] = await Promise.all([
+    axiosClient.get('/problem/getLeaderboard'),
+    axiosClient.get('/problem/correctSubmission'),
+    axiosClient.get('/problem/getAllProblem')
+  ]);
 
+  const myIndex = leaderboardRes.data.findIndex(entry => entry._id === user?._id);
+  const globalRank = myIndex !== -1 ? `#${myIndex + 1}` : "Unranked";
+
+  const solvedCounts = { easy: 0, medium: 0, hard: 0 };
+
+  const solvedTodayIds = new Set();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  if (Array.isArray(solvedRes.data)) {
+    solvedRes.data.forEach(prob => {
+      const diff = prob.difficulty?.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(solvedCounts, diff)) solvedCounts[diff]++;
+
+      const solveDate = new Date(prob.createdAt || new Date());
+      if (solveDate >= startOfToday) {
+        solvedTodayIds.add(prob._id || prob.problemId);
+      }
+    });
+  }
+
+  let potd = null;
+  let isPotdSolved = false;
+  if (allProblemsRes.data.length > 0) {
+    const sortedProblems = [...allProblemsRes.data].sort((a, b) =>
+      a._id.localeCompare(b._id)
+    );
+
+    const today = new Date();
+    const dateSeed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
+    const index = dateSeed % sortedProblems.length;
+    potd = sortedProblems[index];
+    isPotdSolved = solvedTodayIds.has(potd._id);
+  }
+
+  const totals = { easy: 0, medium: 0, hard: 0 };
+  allProblemsRes.data.forEach(p => {
+    const d = p.difficulty?.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(totals, d)) totals[d]++;
+  });
+
+  return {
+    rank: globalRank,
+    solved: solvedCounts,
+    totalInSystem: totals,
+    potd,
+    isPotdSolved,
+  };
+};
 
 
 function HomePage() {
-  const { user } = useSelector((state) => state.auth);
-  
-  const [stats, setStats] = useState({
+  const { user, isNewlyRegistered } = useSelector((state) => state.auth);
+
+  const { data: homeData, isLoading } = useQuery({
+    queryKey: ['homeData', user?._id],
+    queryFn: () => fetchHomeData(user),
+    enabled: !!user,
+  });
+
+  const stats = homeData || {
     rank: "---",
     solved: { easy: 0, medium: 0, hard: 0 },
     totalInSystem: { easy: 0, medium: 0, hard: 0 }
-  });
-  
-  const [potd, setPotd] = useState(null); // Problem of the Day
-  const [isPotdSolved, setIsPotdSolved] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  };
+  const potd = homeData?.potd || null;
+  const isPotdSolved = homeData?.isPotdSolved || false;
 
-  useEffect(() => {
-    const fetchHomeData = async () => {
-      try {
-        const [leaderboardRes, solvedRes, allProblemsRes] = await Promise.all([
-          axiosClient.get('problem/getLeaderboard'),
-          axiosClient.get('/problem/correctSubmission'),
-          axiosClient.get('/problem/getAllProblem')
-        ]);
-
-        const myIndex = leaderboardRes.data.findIndex(entry => entry._id === user?._id);
-        const globalRank = myIndex !== -1 ? `#${myIndex + 1}` : "Unranked";
-
-        const solvedCounts = { easy: 0, medium: 0, hard: 0 };
-        
-        // --- NEW LOGIC: SOLVED TODAY CHECK ---
-        const solvedTodayIds = new Set();
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0); // Get 12:00 AM of the current day
-
-        if (Array.isArray(solvedRes.data)) {
-          solvedRes.data.forEach(prob => {
-            // 1. Traditional counting for mastery stats
-            const diff = prob.difficulty?.toLowerCase();
-            if (solvedCounts.hasOwnProperty(diff)) solvedCounts[diff]++;
-
-            // 2. Check if the problem was solved specifically TODAY
-            // We assume the submission object has a 'createdAt' or 'updatedAt' field
-            const solveDate = new Date(prob.createdAt || new Date()); 
-            if (solveDate >= startOfToday) {
-                solvedTodayIds.add(prob._id || prob.problemId);
-            }
-          });
-        }
-
-        if (allProblemsRes.data.length > 0) {
-            // Sort problems by ID to ensure they are ALWAYS in the same order
-            const sortedProblems = [...allProblemsRes.data].sort((a, b) => 
-                a._id.localeCompare(b._id)
-            );
-
-            const today = new Date();
-            const dateSeed = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-            
-            // Pick the index from the SORTED list
-            const index = dateSeed % sortedProblems.length;
-            const selectedPotd = sortedProblems[index];
-            
-            setPotd(selectedPotd);
-            
-            // Update UI based on if it was solved TODAY specifically
-            setIsPotdSolved(solvedTodayIds.has(selectedPotd._id));
-        }
-
-        const totals = { easy: 0, medium: 0, hard: 0 };
-        allProblemsRes.data.forEach(p => {
-            const d = p.difficulty?.toLowerCase();
-            if (totals.hasOwnProperty(d)) totals[d]++;
-        });
-
-        setStats({
-          rank: globalRank,
-          solved: solvedCounts,
-          totalInSystem: totals
-        });
-
-        setIsDataLoaded(true);
-      } catch (err) {
-        console.error("Error loading Vertex data:", err);
-        setIsDataLoaded(true); 
-      }
-    };
-
-    if (user) fetchHomeData();
-  }, [user]);
-
-  if (!isDataLoaded) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center">
         <div className="flex flex-col items-center gap-6">
@@ -149,7 +133,7 @@ function HomePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="text-4xl font-black tracking-tight ">
-                Welcome back, <span className="text-primary">{user?.firstName || 'GUEST'}</span>!
+                {isNewlyRegistered ? 'Welcome' : 'Welcome back'}, <span className="text-primary">{user?.firstName || 'GUEST'}</span>
               </h1>
               <p className="text-base-content/60 mt-2 text-lg">
                 Your journey to the <span className="font-bold text-base-content">Vertex</span> continues.

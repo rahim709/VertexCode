@@ -3,13 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import axiosClient from '../utils/axiosClient';
 import { useNavigate } from 'react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Zod schema matching the problem schema
 const problemSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
   difficulty: z.enum(['easy', 'medium', 'hard']),
-  tags: z.enum(['array', 'linkedList', 'graph', 'dp']),
+  tags: z.enum(['array', 'linkedlist', 'graph', 'dp']),
   visibleTestCases: z.array(
     z.object({
       input: z.string().min(1, 'Input is required'),
@@ -39,6 +40,7 @@ const problemSchema = z.object({
 
 function AdminPanel() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     register,
     control,
@@ -78,14 +80,22 @@ function AdminPanel() {
     name: 'hiddenTestCases'
   });
 
-  const onSubmit = async (data) => {
-    try {
-      await axiosClient.post('/problem/create', data);
+  const createMutation = useMutation({
+    mutationFn: (data) => axiosClient.post('/problem/create', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['problems'] });
+      queryClient.invalidateQueries({ queryKey: ['homeData'] });
+      queryClient.invalidateQueries({ queryKey: ['profileStats'] });
       alert('Problem created successfully!');
       navigate('/');
-    } catch (error) {
+    },
+    onError: (error) => {
       alert(`Error: ${error.response?.data?.message || error.message}`);
-    }
+    },
+  });
+
+  const onSubmit = (data) => {
+    createMutation.mutate(data);
   };
 
   return (
@@ -147,7 +157,7 @@ function AdminPanel() {
                   className={`select select-bordered ${errors.tags && 'select-error'}`}
                 >
                   <option value="array">Array</option>
-                  <option value="linkedList">Linked List</option>
+                  <option value="linkedlist">Linked List</option>
                   <option value="graph">Graph</option>
                   <option value="dp">DP</option>
                 </select>
@@ -288,8 +298,8 @@ function AdminPanel() {
           </div>
         </div>
 
-        <button type="submit" className="btn btn-primary w-full">
-          Create Problem
+        <button type="submit" className={`btn btn-primary w-full ${createMutation.isPending ? 'loading' : ''}`} disabled={createMutation.isPending}>
+          {createMutation.isPending ? 'Creating...' : 'Create Problem'}
         </button>
       </form>
     </div>

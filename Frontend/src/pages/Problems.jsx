@@ -1,61 +1,53 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NavLink } from 'react-router';
 import { useSelector } from 'react-redux';
 import axiosClient from '../utils/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Search, Filter, ChevronLeft, ChevronRight, CheckCircle2, 
   Layers, Zap, Trophy, LayoutGrid, ChevronRight as ArrowIcon
 } from 'lucide-react';
 
+const loadProblemData = async (user) => {
+  const [{ data: allProblems }, { data: leaderboard }] = await Promise.all([
+    axiosClient.get('/problem/getAllProblem'),
+    axiosClient.get('/problem/getLeaderboard'),
+  ]);
+
+  let solvedProblems = [];
+  if (user) {
+    const { data } = await axiosClient.get('/problem/correctSubmission');
+    solvedProblems = data;
+  }
+
+  let userRank = "---";
+  if (user && leaderboard.length > 0) {
+    const position = leaderboard.findIndex(entry => entry._id === user._id);
+    userRank = position !== -1 ? `#${position + 1}` : "1000+";
+  }
+
+  return { problems: allProblems, solvedProblems, userRank };
+};
+
 function Problems() {
   const { user } = useSelector((state) => state.auth);
-  const [problems, setProblems] = useState([]);
-  const [solvedProblems, setSolvedProblems] = useState([]);
-  const [userRank, setUserRank] = useState("---");
-  const [pageLoading, setPageLoading] = useState(true);
-  
-  // --- Animation State ---
-  const [isVisible, setIsVisible] = useState(false);
 
   const [filters, setFilters] = useState(JSON.parse(localStorage.getItem("filters")) || { difficulty: 'all', tag: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("currentPage")) || 1);
   const [search, setSearch] = useState(localStorage.getItem("search") || "");
 
   const problemsPerPage = 6;
+  const isVisible = true;
 
-  useEffect(() => {
-    localStorage.setItem("currentPage", currentPage);
-    localStorage.setItem("filters", JSON.stringify(filters));
-    localStorage.setItem("search", search);
-  }, [currentPage, filters, search]);
+  const { data, isLoading: pageLoading } = useQuery({
+    queryKey: ['problems', user?._id],
+    queryFn: () => loadProblemData(user),
+    enabled: true,
+  });
 
-  useEffect(() => {
-    const loadData = async () => {
-      setPageLoading(true);
-      try {
-        const { data: allProblems } = await axiosClient.get('/problem/getAllProblem');
-        setProblems(allProblems);
-
-        const { data: leaderboard } = await axiosClient.get('/problem/getLeaderboard');
-        if (user && leaderboard.length > 0) {
-          const position = leaderboard.findIndex(entry => entry._id === user._id);
-          setUserRank(position !== -1 ? `#${position + 1}` : "1000+");
-        }
-
-        if (user) {
-          const solved = await axiosClient.get('/problem/correctSubmission');
-          setSolvedProblems(solved.data);
-        }
-      } catch (err) { 
-        console.error("Error loading problem data:", err); 
-      } finally { 
-        setPageLoading(false); 
-        // Trigger entrance animation after data is loaded
-        setTimeout(() => setIsVisible(true), 50);
-      }
-    };
-    loadData();
-  }, [user]);
+  const problems = data?.problems || [];
+  const solvedProblems = data?.solvedProblems || [];
+  const userRank = data?.userRank || "---";
 
   const filtered = problems.filter(p => {
     const dMatch =
@@ -183,7 +175,7 @@ function Problems() {
                   {filterType === 'tag' && (
                     <>
                       <option value="array">Arrays</option>
-                      <option value="linkedList">Linked Lists</option>
+                      <option value="linkedlist">Linked Lists</option>
                       <option value="graph">Graphs</option>
                       <option value="dp">DP</option>
                     </>
