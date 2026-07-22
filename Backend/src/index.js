@@ -17,12 +17,19 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; 
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  return false;
+};
+
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS: ' + origin));
+      callback(null, false);
     }
   },
   credentials: true,
@@ -35,12 +42,11 @@ app.get('/', (req, res) => {
   res.send('VertexCode API is running ');
 });
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-//  ENSURE DB + REDIS CONNECTED BEFORE ANY ROUTE
+// ENSURE DB + REDIS CONNECTED BEFORE ANY ROUTE
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -60,5 +66,12 @@ app.use(async (req, res, next) => {
 app.use('/user', authRouter);
 app.use('/problem', problemRouter);
 app.use('/submission', submitRouter);
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error'
+  });
+});
 
 module.exports = app;
