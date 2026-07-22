@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axiosClient from "../utils/axiosClient";
-import { API_BASE_URL } from "../utils/apiBase";
+import { API_BASE_URL, getAvatarUrl } from "../utils/apiBase";
 import { useSelector, useDispatch } from "react-redux";
 import { setUser } from "../authSlice";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ const UpdateProfile = () => {
   });
 
   const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatarUrl ? `${API_BASE_URL}${user.avatarUrl}` : null);
+  const [avatarPreview, setAvatarPreview] = useState(getAvatarUrl(user?.avatarUrl));
 
   const updateMutation = useMutation({
     mutationFn: (payload) => {
@@ -34,9 +34,7 @@ const UpdateProfile = () => {
       if (payload.removeAvatar) {
         formData.append("removeAvatar", "true");
       }
-      return axiosClient.put("/user/updateProfile", formData, {
-        headers: { "Content-Type": undefined }
-      });
+      return axiosClient.put("/user/updateProfile", formData);
     },
     onSuccess: ({ data }) => {
       dispatch(setUser(data.user));
@@ -84,7 +82,7 @@ const UpdateProfile = () => {
             <div className={`w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden ${avatarPreview || user?.avatarUrl ? '' : 'bg-primary text-primary-content flex items-center justify-center font-bold'}`}>
               {avatarPreview || user?.avatarUrl ? (
                 <img
-                  src={avatarPreview || `${API_BASE_URL}${user?.avatarUrl}`}
+                  src={avatarPreview || getAvatarUrl(user?.avatarUrl)}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />

@@ -6,8 +6,7 @@ const jwt = require('jsonwebtoken');
 const redisClient = require('../config/redis');
 const Submission = require('../models/submission');
 const sendOTPEmail = require('../services/emailService');
-const fs = require('fs');
-const path = require('path');
+const supabase = require('../config/supabase');
 
 // Cookie options: secure only in production so local HTTP dev works
 const cookieOptions = {
@@ -15,6 +14,51 @@ const cookieOptions = {
   secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   maxAge: 60 * 60 * 1000,
+};
+
+// Supabase avatar helpers
+const uploadAvatarToSupabase = async (buffer, userId, mimetype) => {
+  const ext = mimetype.split('/')[1] || 'png';
+  const fileName = `avatar-${userId}-${Date.now()}.${ext}`;
+  const filePath = `${userId}/${fileName}`;
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, buffer, {
+      contentType: mimetype,
+      upsert: false
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+  return data.publicUrl;
+};
+
+const extractSupabasePath = (avatarUrl) => {
+  try {
+    const url = new URL(avatarUrl);
+    const pathParts = url.pathname.split('/storage/v1/object/public/avatars/');
+    if (pathParts.length === 2) {
+      return pathParts[1];
+    }
+  } catch (e) {
+    console.error('Invalid avatar URL:', e.message);
+  }
+  return null;
+};
+
+const deleteAvatarFromSupabase = async (avatarUrl) => {
+  const filePath = extractSupabasePath(avatarUrl);
+  if (!filePath) return;
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .remove([filePath]);
+
+  if (error) {
+    console.error('Failed to delete old avatar from Supabase:', error.message);
+  }
 };
 
 //Register
@@ -226,6 +270,7 @@ const deleteProfile = async(req, res)=>{
 const updateProfile = async (req, res) => {
   try {
     const userId = req.result._id;
+    // console.log("User ID for profile update:", userId);
     const { firstName, lastName, age, summary, removeAvatar } = req.body;
 
     // Validate required
@@ -251,23 +296,28 @@ const updateProfile = async (req, res) => {
 
     // Handle avatar file upload
     if (req.file) {
-      // Remove old avatar if exists
+      // Remove old avatar from Supabase if exists
       if (existingUser.avatarUrl) {
-        const oldPath = path.join(__dirname, '../../', existingUser.avatarUrl);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+        await deleteAvatarFromSupabase(existingUser.avatarUrl);
       }
-      updateFields.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+      try {
+        const avatarUrl = await uploadAvatarToSupabase(
+          req.file.buffer,
+          userId,
+          req.file.mimetype
+        );
+        updateFields.avatarUrl = avatarUrl;
+      } catch (uploadErr) {
+        console.error('Supabase avatar upload error:', uploadErr);
+        return res.status(500).json({ message: "Avatar upload failed", err: uploadErr.message });
+      }
     }
 
     // Handle avatar removal request
     if (removeAvatar === 'true' || removeAvatar === true) {
       if (existingUser.avatarUrl) {
-        const oldPath = path.join(__dirname, '../../', existingUser.avatarUrl);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+        await deleteAvatarFromSupabase(existingUser.avatarUrl);
       }
       updateFields.avatarUrl = '';
     }
@@ -287,6 +337,7 @@ const updateProfile = async (req, res) => {
     });
 
   } catch (err) {
+    console.error('updateProfile error:', err);
     res.status(500).json({ message: "Internal Error", err: err.message });
   }
 };
@@ -302,10 +353,7 @@ const deleteAvatar = async (req, res) => {
     }
 
     if (user.avatarUrl) {
-      const filePath = path.join(__dirname, '../../', user.avatarUrl);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      await deleteAvatarFromSupabase(user.avatarUrl);
     }
 
     user.avatarUrl = '';

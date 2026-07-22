@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axiosClient from "../utils/axiosClient";
-import { API_BASE_URL } from "../utils/apiBase";
+import { API_BASE_URL, getAvatarUrl } from "../utils/apiBase";
 import { useSelector, useDispatch } from "react-redux";
 import { NavLink } from "react-router";
 import { setUser } from "../authSlice";
@@ -60,7 +60,7 @@ const MyProfile = () => {
       age: user?.age || "",
     });
     setAvatarFile(null);
-    setAvatarPreview(user?.avatarUrl ? `${API_BASE_URL}${user.avatarUrl}` : null);
+    setAvatarPreview(getAvatarUrl(user?.avatarUrl));
     setRemoveAvatar(false);
     setEditMode(true);
     setError("");
@@ -113,9 +113,7 @@ const MyProfile = () => {
       if (payload.removeAvatar) {
         formData.append("removeAvatar", "true");
       }
-      return axiosClient.put("/user/updateProfile", formData, {
-        headers: { "Content-Type": undefined }
-      });
+      return axiosClient.put("/user/updateProfile", formData);
     },
     onSuccess: ({ data }) => {
       dispatch(setUser(data.user));
@@ -201,7 +199,7 @@ const MyProfile = () => {
                   <div className={`w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden ${user?.avatarUrl ? '' : 'bg-primary text-primary-content flex items-center justify-center font-bold'}`}>
                     {user?.avatarUrl ? (
                       <img
-                        src={`${API_BASE_URL}${user.avatarUrl}`}
+                        src={getAvatarUrl(user.avatarUrl)}
                         alt={user?.lastName || "Avatar"}
                         className="w-full h-full object-cover"
                       />
@@ -315,7 +313,7 @@ const MyProfile = () => {
               <div className={`w-20 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden ${avatarPreview || user?.avatarUrl ? '' : 'bg-primary text-primary-content flex items-center justify-center font-bold'}`}>
                 {avatarPreview || user?.avatarUrl ? (
                   <img
-                    src={avatarPreview || `${API_BASE_URL}${user?.avatarUrl}`}
+                    src={avatarPreview || getAvatarUrl(user?.avatarUrl)}
                     alt="Avatar preview"
                     className="w-full h-full object-cover"
                   />

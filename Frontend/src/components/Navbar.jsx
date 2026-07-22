@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../authSlice";
-import { API_BASE_URL } from "../utils/apiBase";
+import { API_BASE_URL, getAvatarUrl } from "../utils/apiBase";
 import { Share2, User, LogOut, LayoutDashboard, Trophy, ShieldCheck } from "lucide-react";
 
 export default function Navbar() {
@@ -62,7 +62,7 @@ export default function Navbar() {
             <div className={`rounded-full w-10 flex items-center justify-center overflow-hidden ${user?.avatarUrl ? '' : 'bg-neutral text-neutral-content'}`}>
               {user?.avatarUrl ? (
                 <img
-                  src={`${API_BASE_URL}${user.avatarUrl}`}
+                  src={getAvatarUrl(user.avatarUrl)}
                   alt={user?.lastName || "Avatar"}
                   className="w-full h-full object-cover"
                 />
