@@ -13,11 +13,10 @@ const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
 
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://app-vertex-code.vercel.app'
-  ],
-  credentials: true
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Health check
