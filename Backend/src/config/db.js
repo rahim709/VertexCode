@@ -7,7 +7,7 @@ async function connectDB() {
 
   try {
     await mongoose.connect(process.env.DB_CONNECT_STRING, {
-      bufferCommands: false, // IMPORTANT for serverless
+      bufferCommands: false,
     });
 
     isConnected = true;

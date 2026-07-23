@@ -2,20 +2,17 @@ import { useSelector } from 'react-redux';
 import { NavLink } from 'react-router';
 import axiosClient from '../utils/axiosClient';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Trophy, 
-  PlayCircle, 
-  Zap, 
-  ChevronRight, 
-  Target, 
-  Code2, 
+import {
+  Trophy,
+  PlayCircle,
+  Zap,
+  ChevronRight,
+  Code2,
   Flame,
   CheckCircle2,
   Calendar,
   Share2
 } from 'lucide-react';
-
-
 
 const DAILY_INSIGHTS = [
     "The best way to predict the future is to implement it.", // Sunday
@@ -104,10 +101,12 @@ function HomePage() {
   };
   const potd = homeData?.potd || null;
   const isPotdSolved = homeData?.isPotdSolved || false;
+  const totalSolved = stats.solved.easy + stats.solved.medium + stats.solved.hard;
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center font-sans">
+        <BrandFont />
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
              <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
@@ -116,8 +115,8 @@ function HomePage() {
              </div>
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-black tracking-widest uppercase italic">Vertex<span className="text-primary">Code</span></h2>
-            <p className="text-sm text-base-content/50 font-bold animate-pulse mt-2 uppercase tracking-tighter">Synchronizing Node Data...</p>
+            <h2 className="font-display text-xl font-bold tracking-tight">Vertex<span className="text-primary">Code</span></h2>
+            <p className="text-sm text-base-content/50 font-mono mt-2">connecting to graph...</p>
           </div>
         </div>
       </div>
@@ -125,65 +124,60 @@ function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-200 flex flex-col">
+    <div className="min-h-screen bg-base-200 flex flex-col font-sans">
+      <BrandFont />
       <div className="container mx-auto px-4 md:px-8 pt-20 pb-12 animate-in fade-in duration-700 grow">
-        
+
         {/* Welcome Header */}
         <header className="mb-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-black tracking-tight ">
-                {isNewlyRegistered ? 'Welcome' : 'Welcome back'}, <span className="text-primary">{user?.firstName || 'GUEST'}</span>
+              <p className="font-mono text-xs text-primary mb-2">
+                node &gt; {user?.firstName?.toLowerCase() || 'guest'}
+              </p>
+              <h1 className="font-display text-4xl font-bold tracking-tight text-base-content">
+                {isNewlyRegistered ? 'Welcome' : 'Welcome back'}, <span className="text-primary">{user?.firstName || 'Guest'}</span>
               </h1>
               <p className="text-base-content/60 mt-2 text-lg">
-                Your journey to the <span className="font-bold text-base-content">Vertex</span> continues.
+                Your path to the vertex continues.
               </p>
             </div>
-            <div className="stats shadow bg-base-100 border border-base-300">
-              <div className="stat px-6">
-                <div className="stat-figure text-orange-500">
-                  <Flame className="w-8 h-8 fill-current" />
-                </div>
-                <div className="stat-title text-xs font-bold uppercase tracking-tighter">Total Solved</div>
-                <div className="stat-value text-2xl">
-                    {stats.solved.easy + stats.solved.medium + stats.solved.hard}
-                </div>
+
+            <div className="flex items-center gap-3 bg-base-100 border border-base-300 rounded-xl px-6 py-4">
+              <Flame className="w-7 h-7 text-warning" />
+              <div>
+                <p className="font-mono text-xs text-base-content/40 uppercase tracking-wide">total solved</p>
+                <p className="font-display text-2xl font-bold text-base-content">{totalSolved}</p>
               </div>
             </div>
           </div>
         </header>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          
+
           <div className="lg:col-span-2 space-y-8">
             {/* Quick Start Hero */}
-            <div className="card bg-primary text-primary-content shadow-xl overflow-hidden relative border-none">
-              <div className="card-body p-8 md:p-12 z-10">
-                <h2 className="text-3xl font-black mb-4 uppercase italic tracking-tighter">Level Up Your Logic</h2>
-                <p className="text-primary-content/80 mb-8 max-w-md leading-relaxed font-medium">
-                  Consistent practice is the fastest path to the top of the leaderboard. Pick a problem and start coding.
-                </p>
-                <div className="card-actions">
-                  <NavLink to="/problems" className="btn btn-neutral px-8 shadow-lg">
-                    Resume Practice <PlayCircle className="w-5 h-5 ml-2" />
-                  </NavLink>
-                </div>
-              </div>
-              <div className="absolute top-[-20%] right-[-10%] opacity-10">
-                <Target className="w-64 h-64" />
-              </div>
+            <div className="rounded-2xl bg-primary text-primary-content p-8 md:p-12">
+              <p className="font-mono text-xs text-primary-content/60 mb-3">$ vertex resume</p>
+              <h2 className="font-display text-3xl font-bold mb-4 tracking-tight">Level up your logic</h2>
+              <p className="text-primary-content/80 mb-8 max-w-md leading-relaxed">
+                Consistent practice is the fastest path to the top of the leaderboard. Pick a problem and start coding.
+              </p>
+              <NavLink to="/problems" className="btn btn-neutral px-8 gap-2">
+                Resume practice <PlayCircle className="w-5 h-5" />
+              </NavLink>
             </div>
 
             {/* Problem of the Day Section */}
-            <div className="card bg-base-100 border border-base-300 shadow-xl">
+            <div className="card bg-base-100 border border-base-300">
               <div className="card-body p-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold flex items-center gap-2 uppercase italic tracking-tight">
-                    <Calendar className="text-primary w-5 h-5" /> Daily Challenge
+                  <h3 className="font-display text-xl font-bold flex items-center gap-2 tracking-tight">
+                    <Calendar className="text-primary w-5 h-5" /> POTD
                   </h3>
                   {isPotdSolved && (
-                    <div className="badge badge-success gap-1 py-3 px-4 text-xs font-bold text-success-content uppercase tracking-widest">
-                      <CheckCircle2 className="w-4 h-4" /> SOLVED
+                    <div className="flex items-center gap-1.5 font-mono text-xs font-semibold px-3 py-1.5 rounded-full bg-success/10 text-success">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> solved
                     </div>
                   )}
                 </div>
@@ -191,30 +185,28 @@ function HomePage() {
                 {potd ? (
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
-                          potd.difficulty === 'easy' ? 'bg-success/20 text-success' : 
-                          potd.difficulty === 'medium' ? 'bg-warning/20 text-warning' : 'bg-error/20 text-error'
+                      <div className="flex items-center gap-2 mb-2 font-mono text-[11px]">
+                        <span className={`px-2 py-0.5 rounded ${
+                          potd.difficulty === 'easy' ? 'bg-success/10 text-success' :
+                          potd.difficulty === 'medium' ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error'
                         }`}>
                           {potd.difficulty}
                         </span>
-                        <span className="text-[10px] font-bold text-base-content/40 uppercase">#{potd.tags}</span>
+                        <span className="text-base-content/40">#{potd.tags}</span>
                       </div>
-                      <h2 className="text-2xl font-black italic tracking-tight uppercase">{potd.title}</h2>
+                      <h2 className="font-display text-2xl font-bold tracking-tight text-base-content">{potd.title}</h2>
                     </div>
-                    
-                    <div className="card-actions">
-                      <NavLink 
-                        to={`/problem/${potd._id}`} 
-                        className={`btn ${isPotdSolved ? 'btn-outline btn-success' : 'btn-primary'} px-10 shadow-lg`}
-                      >
-                        {isPotdSolved ? 'View Solution' : 'Solve Challenge'}
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </NavLink>
-                    </div>
+
+                    <NavLink
+                      to={`/problem/${potd._id}`}
+                      className={`btn ${isPotdSolved ? 'btn-outline btn-success' : 'btn-primary'} px-10 gap-1 shrink-0`}
+                    >
+                      {isPotdSolved ? 'View solution' : 'Solve challenge'}
+                      <ChevronRight className="w-4 h-4" />
+                    </NavLink>
                   </div>
                 ) : (
-                  <p className="text-base-content/50 italic">Synchronizing daily nodes...</p>
+                  <p className="text-base-content/50 font-mono text-sm">syncing today's node...</p>
                 )}
               </div>
             </div>
@@ -222,19 +214,19 @@ function HomePage() {
 
           {/* Sidebar */}
           <div className="space-y-8">
-            <div className="card bg-base-100 border border-base-300 shadow-sm">
+            <div className="card bg-base-100 border border-base-300">
               <div className="card-body">
-                <div className="flex items-center gap-4 mb-8 bg-primary/5 p-4 rounded-xl border border-primary/10">
-                  <div className="bg-primary p-3 rounded-lg text-primary-content shadow-md shadow-primary/20">
-                    <Trophy className="w-6 h-6" />
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Trophy className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-base-content/40 font-black uppercase tracking-widest">Global Rank</p>
-                    <p className="font-black text-3xl text-primary">{stats.rank}</p>
+                    <p className="font-mono text-[11px] text-base-content/40 uppercase tracking-wide">global rank</p>
+                    <p className="font-display text-3xl font-bold text-primary">{stats.rank}</p>
                   </div>
                 </div>
 
-                <h3 className="text-[10px] font-black uppercase text-base-content/40 mb-4 tracking-widest">Mastery Progress</h3>
+                <h3 className="font-mono text-[11px] uppercase text-base-content/40 mb-4 tracking-wide">mastery progress</h3>
                 <div className="space-y-6">
                   <DifficultyBar label="Easy" solved={stats.solved.easy} total={stats.totalInSystem.easy} color="progress-success" />
                   <DifficultyBar label="Medium" solved={stats.solved.medium} total={stats.totalInSystem.medium} color="progress-warning" />
@@ -243,15 +235,13 @@ function HomePage() {
               </div>
             </div>
 
-            <div className="card bg-base-300/50 border border-base-300">
-              <div className="card-body p-6 text-sm">
-                <h3 className="font-bold flex items-center gap-2 mb-2 uppercase text-xs tracking-tighter text-base-content/60">
-                  <Zap className="w-4 h-4 text-yellow-500 fill-current" /> Daily Insight
-                </h3>
-                <p className="text-base-content/70 leading-relaxed italic font-medium">
-                  {todayInsight}
-                </p>
-              </div>
+            <div className="rounded-2xl bg-base-100 border border-base-300 p-6">
+              <p className="font-mono text-xs text-base-content/40 mb-3 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-warning" /> // daily_insight
+              </p>
+              <p className="text-base-content/70 leading-relaxed">
+                {todayInsight}
+              </p>
             </div>
           </div>
         </div>
@@ -259,12 +249,12 @@ function HomePage() {
 
       <footer className="bg-base-100 py-10 border-t border-base-300 w-full">
         <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Share2 className="w-5 h-5 text-primary rotate-90" />
-            <span className="font-bold text-lg tracking-tighter ">Vertex<span className="text-primary">Code</span></span>
+          <div className="flex items-center justify-center gap-2 mb-4 text-primary">
+            <Share2 className="w-5 h-5 rotate-90" />
+            <span className="font-display font-bold text-lg text-base-content">Vertex<span className="text-primary">Code</span></span>
           </div>
-          <p className="text-base-content/50 text-sm">
-            Copyright © 2025 VertexCode
+          <p className="text-base-content/50 text-sm font-mono">
+            © 2026 VertexCode
           </p>
         </div>
       </footer>
@@ -275,12 +265,24 @@ function HomePage() {
 function DifficultyBar({ label, solved, total, color }) {
   return (
     <div>
-      <div className="flex justify-between text-[10px] mb-1.5 font-black uppercase tracking-tighter opacity-70">
+      <div className="flex justify-between text-[11px] mb-1.5 font-mono uppercase tracking-wide text-base-content/60">
         <span>{label}</span>
         <span>{solved} / {total}</span>
       </div>
-      <progress className={`progress ${color} h-2 shadow-inner`} value={solved} max={total}></progress>
+      <progress className={`progress ${color} h-1.5`} value={solved} max={total}></progress>
     </div>
+  );
+}
+
+// Loads the same Space Grotesk / IBM Plex Mono pairing used across the
+// VertexCode marketing pages, so the dashboard reads as the same product.
+function BrandFont() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+      .font-display { font-family: 'Space Grotesk', sans-serif; }
+      .font-mono { font-family: 'IBM Plex Mono', monospace; }
+    `}</style>
   );
 }
 

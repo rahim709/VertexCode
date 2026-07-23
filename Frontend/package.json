@@ -26,6 +26,7 @@
     "react-resizable-panels": "^4.0.15",
     "react-router": "^7.10.1",
     "redux-persist": "^6.0.0",
+    "stripe": "^22.3.2",
     "tailwindcss": "^4.1.17",
     "zod": "^4.1.13"
   },

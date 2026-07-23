@@ -5,7 +5,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { NavLink } from "react-router";
 import { setUser } from "../authSlice";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Edit3, CheckCircle, TrendingUp, BookOpen, AlertCircle, Hash, Share2, Camera, X } from "lucide-react";
+import { User, Edit3, CheckCircle, TrendingUp, BookOpen, AlertCircle, Hash, Share2, Camera, X, Crown, Calendar, Sparkles } from "lucide-react";
+import { Link } from "react-router";
 
 const loadStats = async () => {
   const [{ data: allProblems }, { data: solvedProblems }, { data: latest }] = await Promise.all([
@@ -44,6 +45,10 @@ const MyProfile = () => {
   const recentSolved = stats?.recentSolved || [];
   const total = stats?.total || { easy: 0, medium: 0, hard: 0 };
   const solved = stats?.solved || { easy: 0, medium: 0, hard: 0 };
+
+  const isPro = user?.subscription?.active;
+  const userPlan = user?.subscription?.plan;
+  const currentPeriodEnd = user?.subscription?.currentPeriodEnd;
 
   const [form, setForm] = useState({
     firstName: user?.firstName || "",
@@ -182,7 +187,6 @@ const MyProfile = () => {
 
   return (
     <div className="min-h-screen bg-base-200/50 flex flex-col">
-      {/* Content wrapper with flex-grow to push footer down */}
       <div className="grow pb-20 pt-28 px-4">
         <div className={`toast toast-top toast-center z-100 transition-all duration-300 ${showToast ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <div className="alert alert-success shadow-lg text-white font-bold">
@@ -233,6 +237,49 @@ const MyProfile = () => {
                 </div>
               </div>
             </div>
+
+            <div className="card bg-base-100 shadow-xl border border-base-300">
+              <div className="card-body items-center text-center">
+                <div className="flex items-center gap-2 mb-2">
+                  {isPro && userPlan === 'yearly' ? (
+                    <Crown className="w-5 h-5 text-primary" />
+                  ) : isPro && userPlan === 'monthly' ? (
+                    <Calendar className="w-5 h-5 text-info" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 text-warning" />
+                  )}
+                  <h3 className="font-bold text-lg">Subscription</h3>
+                </div>
+                {isPro ? (
+                  <>
+                    <div className={`badge ${userPlan === 'yearly' ? 'badge-primary' : 'badge-info'} gap-1 px-3 py-2 mb-2`}>
+                      {userPlan === 'yearly' ? (
+                        <><Crown className="w-3 h-3" /> Pro Member</>
+                      ) : (
+                        <><Calendar className="w-3 h-3" /> Monthly Pro</>
+                      )}
+                    </div>
+                    {currentPeriodEnd && (
+                      <p className="text-xs text-base-content/60">
+                        Renews on {new Date(currentPeriodEnd).toLocaleDateString()}
+                      </p>
+                    )}
+                    {userPlan === 'monthly' && (
+                      <Link to="/pricing" className="btn btn-outline btn-sm btn-block mt-3 gap-1">
+                        <Sparkles className="w-3 h-3" /> Upgrade to Yearly
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-base-content/70 mb-3">Unlock reference solutions and editorial content.</p>
+                    <Link to="/pricing" className="btn btn-primary btn-sm btn-block gap-1">
+                      <Sparkles className="w-3 h-3" /> Upgrade to Pro
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="lg:col-span-8 space-y-6">
@@ -280,7 +327,6 @@ const MyProfile = () => {
         </div>
       </div>
 
-      {/* Footer - Integrated directly to avoid gap */}
       <footer className="bg-base-100 py-10 border-t border-base-300 w-full mt-auto">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -293,7 +339,6 @@ const MyProfile = () => {
         </div>
       </footer>
 
-      {/* Modal remains separate outside the flex-grow container */}
       <input type="checkbox" checked={editMode} readOnly className="modal-toggle" />
       <div className="modal modal-bottom sm:modal-middle backdrop-blur-sm">
         <div className="modal-box border border-base-300 shadow-2xl">
@@ -302,9 +347,9 @@ const MyProfile = () => {
           </h3>
 
           {error && (
-            <div className="alert alert-error shadow-sm mb-4 py-3 text-white">
-              <AlertCircle size={20} />
-              <span className="text-sm font-bold">{error}</span>
+            <div className="alert alert-error shadow-sm mb-4 py-3 bg-red-50 border-red-200">
+              <AlertCircle size={20} className="text-red-600" />
+              <span className="text-sm font-bold text-red-600">{error}</span>
             </div>
           )}
 

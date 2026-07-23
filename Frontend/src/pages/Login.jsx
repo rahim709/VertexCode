@@ -2,10 +2,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, NavLink } from 'react-router'; 
+import { useNavigate, NavLink, useSearchParams } from 'react-router';
 import { loginUser, resetError } from "../authSlice";
 import { useEffect, useState } from 'react';
-import { Share2, Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react'; 
+import { Share2, Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react';
 
 const loginSchema = z.object({
   emailId: z.string().email("Invalid Email"),
@@ -16,23 +16,23 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
+
   const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
-  
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm({ resolver: zodResolver(loginSchema) });
 
-  // Logic: Redirect to landing/home if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate(callbackUrl);
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, callbackUrl]);
 
-  // Logic: Auto-clear backend errors after 3 seconds
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -50,8 +50,8 @@ function Login() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
       {error && (
         <div className="toast toast-top toast-center z-[100]">
-          <div className="alert alert-error shadow-lg">
-            <span className="font-semibold">{typeof error === "string" ? error : "Login Failed. Try Again"}</span>
+          <div className="alert alert-error shadow-lg bg-red-50 border-red-200">
+            <span className="font-semibold text-red-600">{typeof error === "string" ? error : "Login Failed. Try Again"}</span>
           </div>
         </div>
       )}
@@ -113,8 +113,13 @@ function Login() {
               )}
             </div>
 
+            <div className="flex justify-end -mt-3">
+              <NavLink to="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                Forgot your password?
+              </NavLink>
+            </div>
+
             <div className="form-control mt-6">
-              {/* Logic: Button text updates to 'Signing In...' when loading; no spinning roll */}
               <button
                 type="submit"
                 className="btn btn-primary btn-block text-lg h-12 shadow-lg shadow-primary/20"

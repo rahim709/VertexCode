@@ -2,7 +2,6 @@ const {getLanguageById, submitBatch, submitToken} = require("../utils/problemUti
 const Problem = require('../models/problem');
 const User = require('../models/user');
 const Submission = require("../models/submission");
-//create problem function
 const createProblem = async (req, res)=>{
 
     const {
@@ -21,11 +20,6 @@ const createProblem = async (req, res)=>{
         // for(const element of referenceSolution)
         for(const {language, completeCode} of referenceSolution){
 
-            // we will send this to judg0
-            // source code
-            // language_id
-            // stdin
-            // expected output
 
             const languageId = getLanguageById(language);
 
@@ -63,7 +57,6 @@ const createProblem = async (req, res)=>{
 
         }
 
-        //now we can store our result in database
 
         await Problem.create({
             ...req.body,
@@ -83,7 +76,6 @@ const createProblem = async (req, res)=>{
     }
 }
 
-//update problem function
 const updateProblem = async(req, res)=>{
 
     const {id} = req.params;
@@ -105,11 +97,6 @@ const updateProblem = async(req, res)=>{
         // for(const element of referenceSolution)
         for(const {language, completeCode} of referenceSolution){
 
-            // we will send this to judg0
-            // source code
-            // language_id
-            // stdin
-            // expected output
 
             const languageId = getLanguageById(language);
 
@@ -145,7 +132,6 @@ const updateProblem = async(req, res)=>{
 
         }
 
-        //now we can store our result in database
 
         // new:true means updated documents return krke dena
         const newProblem = await Problem.findByIdAndUpdate(id, updateData, {runValidators:true, new:true}); //runValidators means check all the edge cases when we created DB
@@ -165,7 +151,6 @@ const updateProblem = async(req, res)=>{
     }
 }
 
-//delete problem
 const deleteProblem = async(req, res)=>{
     const {id} = req.params;
 
@@ -188,7 +173,6 @@ const deleteProblem = async(req, res)=>{
 }
 
 
-// get problem by id
 const getProblemById = async(req, res)=>{
 
     const {id} = req.params;
@@ -199,7 +183,7 @@ const getProblemById = async(req, res)=>{
 
         let query = Problem.findById(id);
         if (req.result.role !== 'admin') {
-            query = query.select('-hiddenTestCases -problemCreator');
+            query = query.select('-hiddenTestCases -problemCreator -referenceSolution');
         }
         const getProblem = await query;
 
@@ -213,7 +197,26 @@ const getProblemById = async(req, res)=>{
     }
 }
 
-//get all problem 
+const getSolution = async(req, res)=>{
+
+    const {id} = req.params;
+
+    try{
+        if(!id)
+            return res.status(400).send("ID is Missing");
+
+        const getProblem = await Problem.findById(id).select('title referenceSolution');
+
+        if(!getProblem)
+            return res.status(404).send("Problem is Missing");
+
+        res.status(200).send({ referenceSolution: getProblem.referenceSolution });
+    }
+    catch(err){
+        res.status(500).send("Error: "+err);
+    }
+}
+
 const getAllProblem = async(req, res)=>{
 
     try{
@@ -230,7 +233,6 @@ const getAllProblem = async(req, res)=>{
     }
 }
 
-//solvedAllProblemByUser
 const solvedAllProblembyUser = async(req, res)=>{
 
     try{
@@ -252,7 +254,6 @@ const solvedAllProblembyUser = async(req, res)=>{
 
 }
 
-//submitted problem
 
 const submittedProblem = async(req, res)=>{
 
@@ -275,7 +276,6 @@ const submittedProblem = async(req, res)=>{
     }
 }
 
-//select latest 5 problem by user
 const recentSolved = async (req, res) => {
   try {
     const userId = req.result._id;
@@ -328,7 +328,6 @@ const correctSubmission = async (req, res) => {
         }
       },
 
-      // Sort final result list
       { $sort: { createdAt: -1 } }
     ]);
 
@@ -362,6 +361,7 @@ const getLeaderboard = async (req, res) => {
           _id: 1,
           firstName: 1,
           lastName: 1,
+          avatarUrl: 1,
           createdAt: 1, //  required for tie-breaker
           uniqueAcceptedSubmissions: {
             $reduce: {
@@ -391,6 +391,7 @@ const getLeaderboard = async (req, res) => {
           _id: 1,
           firstName: 1,
           lastName: 1,
+          avatarUrl: 1,
           createdAt: 1,
           solvedCount: { $size: "$uniqueAcceptedSubmissions" },
           vertexScore: {
@@ -438,7 +439,7 @@ const getLeaderboard = async (req, res) => {
 };
 
 
-module.exports = {createProblem, updateProblem, deleteProblem, getProblemById, getAllProblem, solvedAllProblembyUser, submittedProblem, recentSolved, correctSubmission, getLeaderboard};
+module.exports = {createProblem, updateProblem, deleteProblem, getProblemById, getSolution, getAllProblem, solvedAllProblembyUser, submittedProblem, recentSolved, correctSubmission, getLeaderboard};
 
 
 
@@ -473,18 +474,10 @@ module.exports = {createProblem, updateProblem, deleteProblem, getProblemById, g
 
 
 
-//  we will give to judge0 
-//  language:c++
-//  code:absh
-//  input:12
-//  output:43
-
-// there is three test cases
-// we will submit whole test cases (in batch form)
 
 
 
-//if output will match then judge0 will return true or false
+
 
 // Latest ID for each language
 // C++       → 105

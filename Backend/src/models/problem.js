@@ -73,7 +73,7 @@ const problemSchema = new Schema({
         }
     ],
     problemCreator:{
-        type: Schema.Types.ObjectId, //storing objectId which admin was created
+        type: Schema.Types.ObjectId,
         ref:'user',
         required: true
     }

@@ -11,6 +11,8 @@ const cors = require('cors');
 const authRouter = require('./routes/userAuth');
 const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
+const paymentRouter = require('./routes/payment');
+const { stripeWebhook } = require('./controllers/paymentController');
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -37,16 +39,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Health check
 app.get('/', (req, res) => {
   res.send('VertexCode API is running ');
 });
+
+// Stripe webhook needs raw body — must be before express.json()
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ENSURE DB + REDIS CONNECTED BEFORE ANY ROUTE
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -66,6 +69,7 @@ app.use(async (req, res, next) => {
 app.use('/user', authRouter);
 app.use('/problem', problemRouter);
 app.use('/submission', submitRouter);
+app.use('/api/payments', paymentRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

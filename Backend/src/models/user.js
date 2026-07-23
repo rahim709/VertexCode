@@ -1,6 +1,17 @@
 const mongoose = require('mongoose');
 const {Schema} = mongoose;
 
+const subscriptionSchema = new Schema({
+    active: { type: Boolean, default: false },
+    status: { type: String },
+    plan: { type: String, enum: ['monthly', 'yearly'] },
+    priceId: { type: String },
+    stripeCustomerId: { type: String },
+    stripeSubscriptionId: { type: String },
+    stripeSessionId: { type: String },
+    currentPeriodEnd: { type: Date },
+}, { _id: false });
+
 const userSchema = new Schema({
     // treated as username
     firstName:{
@@ -43,7 +54,6 @@ const userSchema = new Schema({
         type:String,
         required:true
     },
-    //added these feature
     summary:{
         type:String
     },
@@ -54,6 +64,9 @@ const userSchema = new Schema({
     isVerified:{
         type:Boolean,
         default:false
+    },
+    subscription: {
+        type: subscriptionSchema,
     }
 
 },{

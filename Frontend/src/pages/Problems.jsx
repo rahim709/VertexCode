@@ -88,7 +88,6 @@ function Problems() {
     <div className={`min-h-screen bg-base-200 pt-24 pb-12 transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
       <div className="container mx-auto px-4 max-w-6xl">
         
-        {/* --- Stats Dashboard --- */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="stats shadow bg-base-100 border border-base-300 md:col-span-3 overflow-hidden">
             <div className="stat">
@@ -124,7 +123,6 @@ function Problems() {
           </div>
         </div>
 
-        {/* --- Control Bar --- */}
         <div className="flex flex-col lg:flex-row gap-4 mb-8 items-center bg-base-100 p-4 rounded-2xl shadow-sm border border-base-300 transform transition-all duration-500 delay-100">
           <div className="relative w-full lg:flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
@@ -187,13 +185,12 @@ function Problems() {
 
         </div>
 
-        {/* --- Problems Display --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {currentProblems.map((problem, index) => (
             <NavLink 
               key={problem._id} 
               to={`/problem/${problem._id}`}
-              style={{ transitionDelay: `${index * 50}ms` }} // Staggered delay
+              style={{ transitionDelay: `${index * 50}ms` }}
               className={`group card bg-base-100 border border-base-300 hover:border-primary transition-all duration-500 hover:shadow-xl hover:-translate-y-1 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             >
               <div className="card-body p-5">
@@ -229,7 +226,6 @@ function Problems() {
           ))}
         </div>
 
-        {/* --- Empty State --- */}
         {!pageLoading && currentProblems.length === 0 && (
           <div className="text-center py-20 bg-base-100 rounded-3xl border-2 border-dashed border-base-300 animate-in fade-in zoom-in duration-500">
             <LayoutGrid className="w-16 h-16 mx-auto opacity-10 mb-4" />
@@ -238,7 +234,6 @@ function Problems() {
           </div>
         )}
 
-        {/* --- Modern Pagination --- */}
         {totalPages > 1 && (
           <div className={`flex justify-center mt-12 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
             <div className="join bg-base-100 shadow-sm border border-base-300">

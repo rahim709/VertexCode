@@ -1,23 +1,23 @@
 const express = require('express');
-const {register, login,logout, adminRegister, deleteProfile, updateProfile, deleteAvatar} = require("../controllers/userAuthent");
+const {register, login,logout, adminRegister, deleteProfile, updateProfile, deleteAvatar, requestPasswordReset, resetPassword} = require("../controllers/userAuthent");
 const authRouter = express.Router();
 const userMiddleware = require("../middleware/userMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const {verifyOTP, resendOTP} = require("../controllers/userOTP");
 const upload = require("../config/multer");
 
-//Register
 authRouter.post('/register', register);
 authRouter.post('/verifyOTP', verifyOTP);
 authRouter.post('/resendOTP', resendOTP);
 authRouter.post('/login',login);
+authRouter.post('/request-password-reset', requestPasswordReset);
+authRouter.post('/reset-password', resetPassword);
 authRouter.post('/logout',userMiddleware,logout);
 authRouter.post('/admin/register',adminMiddleware, adminRegister);
 authRouter.delete('/deleteProfile',userMiddleware, deleteProfile);
 authRouter.put('/updateProfile', userMiddleware, upload.single('avatar'), updateProfile);
 authRouter.delete('/avatar', userMiddleware, deleteAvatar);
 
-// check is user already loggedIn or SignUp
 authRouter.get('/check', userMiddleware, (req,res) =>{
     
     const reply = {
@@ -29,7 +29,8 @@ authRouter.get('/check', userMiddleware, (req,res) =>{
         summary: req.result.summary,
         age: req.result.age,
         avatarUrl: req.result.avatarUrl,
-        count: req.result.count
+        count: req.result.count,
+        subscription: req.result.subscription,
     }
     //console.log(reply);
     // const reply = {

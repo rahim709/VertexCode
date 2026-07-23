@@ -1,11 +1,11 @@
 const express = require('express');
 const User = require("../models/user");
-const validate = require("../utils/validator");
+const { validate, isStrongPassword } = require("../utils/validator");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const redisClient = require('../config/redis');
 const Submission = require('../models/submission');
-const sendOTPEmail = require('../services/emailService');
+const { sendOTPEmail, sendPasswordResetEmail } = require('../services/emailService');
 const supabase = require('../config/supabase');
 
 // Cookie options: secure only in production so local HTTP dev works
@@ -16,7 +16,6 @@ const cookieOptions = {
   maxAge: 60 * 60 * 1000,
 };
 
-// Supabase avatar helpers
 const uploadAvatarToSupabase = async (buffer, userId, mimetype) => {
   const ext = mimetype.split('/')[1] || 'png';
   const fileName = `avatar-${userId}-${Date.now()}.${ext}`;
@@ -61,7 +60,6 @@ const deleteAvatarFromSupabase = async (avatarUrl) => {
   }
 };
 
-//Register
 const register = async (req, res) => {
   try {
     validate(req.body);
@@ -69,7 +67,6 @@ const register = async (req, res) => {
     const { firstName, emailId: rawEmail, password } = req.body;
     const emailId = rawEmail.toLowerCase();
 
-    //  Check existing verified user
     const existingUser = await User.findOne({ emailId });
     if (existingUser) {
       return res.status(400).json({
@@ -77,14 +74,11 @@ const register = async (req, res) => {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
-    // Store pending user data + OTP in Redis (overwrite if re-registering)
     const client = redisClient();
     const pendingKey = `pendingUser:${emailId}`;
     const otpKey = `otp:${emailId}`;
@@ -98,7 +92,6 @@ const register = async (req, res) => {
 
     await client.setEx(otpKey, 300, hashedOtp);
 
-    //  Send OTP
     await sendOTPEmail(emailId, otp);
 
     res.status(201).json({
@@ -107,7 +100,6 @@ const register = async (req, res) => {
     });
 
   } catch (err) {
-    // Handle duplicate index just in case
     if (err.code === 11000) {
       return res.status(400).json({
         message: "Email already in use. Try again after a minute."
@@ -117,7 +109,6 @@ const register = async (req, res) => {
   }
 };
 
-//login
 const login = async (req, res) => {
   try {
     const { emailId: rawEmail, password } = req.body;
@@ -168,7 +159,8 @@ const login = async (req, res) => {
         summary: user.summary,
         age: user.age,
         avatarUrl: user.avatarUrl,
-        count: user.problemSolved.length
+        count: user.problemSolved.length,
+        subscription: user.subscription,
       },
       message: "Login successful"
     });
@@ -180,7 +172,6 @@ const login = async (req, res) => {
   }
 };
 
-//logout
 const logout = async(req, res)=>{
 
     try{
@@ -206,18 +197,15 @@ const logout = async(req, res)=>{
     }
 }
 
-//AdminRegister
 const adminRegister = async(req, res)=>{
 
     try{
         //console.log("Hello");
-        //validate the user
         validate(req.body);
 
         const {firstName, emailId: rawEmail, password} = req.body;
         const emailId = rawEmail.toLowerCase();
         
-        //email already exists or not
         // const ans = await User.exists({emailId});
         // if(ans) console.log("User exists");
         // else console.log("No such user");
@@ -244,17 +232,14 @@ const adminRegister = async(req, res)=>{
 
 }
 
-//delete profile
 const deleteProfile = async(req, res)=>{
 
     try{
 
         const userId = req.result._id;
 
-        //delete user from userSchema
         await User.findByIdAndDelete(userId);
 
-        //submission se bhi delete karna hai
         // await Submission.deleteMany({userId});
 
         res.status(200).send('Deleted Successfully');
@@ -266,14 +251,12 @@ const deleteProfile = async(req, res)=>{
     }
 }
 
-// update Profile
 const updateProfile = async (req, res) => {
   try {
     const userId = req.result._id;
     // console.log("User ID for profile update:", userId);
     const { firstName, lastName, age, summary, removeAvatar } = req.body;
 
-    // Validate required
     if (!firstName || firstName.trim().length < 3) {
       return res.status(400).json({ message: "Username must be at least 3 chars" });
     }
@@ -294,7 +277,6 @@ const updateProfile = async (req, res) => {
       summary,
     };
 
-    // Handle avatar file upload
     if (req.file) {
       // Remove old avatar from Supabase if exists
       if (existingUser.avatarUrl) {
@@ -314,7 +296,6 @@ const updateProfile = async (req, res) => {
       }
     }
 
-    // Handle avatar removal request
     if (removeAvatar === 'true' || removeAvatar === true) {
       if (existingUser.avatarUrl) {
         await deleteAvatarFromSupabase(existingUser.avatarUrl);
@@ -342,7 +323,6 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// Delete avatar only
 const deleteAvatar = async (req, res) => {
   try {
     const userId = req.result._id;
@@ -372,4 +352,80 @@ const deleteAvatar = async (req, res) => {
 };
 
 
-module.exports = {register, login, logout, adminRegister, deleteProfile, updateProfile, deleteAvatar};
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const emailId = email?.toLowerCase().trim();
+
+    if (!emailId) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ emailId });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with this email" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    const client = redisClient();
+    const resetOtpKey = `resetOtp:${emailId}`;
+    await client.setEx(resetOtpKey, 600, hashedOtp);
+
+    await sendPasswordResetEmail(emailId, otp);
+
+    res.status(200).json({ message: "Password reset code sent to your email" });
+  } catch (err) {
+    console.error("Request password reset error:", err);
+    res.status(500).json({ message: err.message || "Internal server error" });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const emailId = email?.toLowerCase().trim();
+
+    if (!emailId || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, code and new password are required" });
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters and include uppercase, lowercase, number, and special character (@$!%*?&)"
+      });
+    }
+
+    const client = redisClient();
+    const resetOtpKey = `resetOtp:${emailId}`;
+    const hashedOtp = await client.get(resetOtpKey);
+
+    if (!hashedOtp) {
+      return res.status(400).json({ message: "Reset code expired. Please request a new one." });
+    }
+
+    const isMatch = await bcrypt.compare(otp.trim(), hashedOtp);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid reset code" });
+    }
+
+    const user = await User.findOne({ emailId });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with this email" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    await client.del(resetOtpKey);
+
+    res.status(200).json({ message: "Password reset successful. Please login with your new password." });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ message: err.message || "Internal server error" });
+  }
+};
+
+module.exports = {register, login, logout, adminRegister, deleteProfile, updateProfile, deleteAvatar, requestPasswordReset, resetPassword};

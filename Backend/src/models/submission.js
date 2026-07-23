@@ -60,7 +60,6 @@ const submissionSchema = new Schema({
     timestamps:true
 });
 
-// creating indexing
 submissionSchema.index({userId:1, problemId:1});
 
 const Submission = mongoose.model('submission',submissionSchema);

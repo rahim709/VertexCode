@@ -180,8 +180,8 @@ function UpdateProblem() {
   if (fetchError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200 p-4">
-        <div className="alert alert-error shadow-lg max-w-md">
-          <span>{fetchError}</span>
+        <div className="alert alert-error shadow-lg max-w-md bg-red-50 border-red-200">
+          <span className="text-red-600">{fetchError}</span>
         </div>
       </div>
     );
@@ -192,7 +192,6 @@ function UpdateProblem() {
       <h1 className="text-3xl font-bold mb-6">Update Problem</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Basic Information */}
         <div className="card bg-base-100 shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
           <div className="space-y-4">
@@ -255,11 +254,9 @@ function UpdateProblem() {
           </div>
         </div>
 
-        {/* Test Cases */}
         <div className="card bg-base-100 shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Test Cases</h2>
 
-          {/* Visible Test Cases */}
           <div className="space-y-4 mb-6">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">Visible Test Cases</h3>
@@ -305,7 +302,6 @@ function UpdateProblem() {
             ))}
           </div>
 
-          {/* Hidden Test Cases */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">Hidden Test Cases</h3>
@@ -346,7 +342,6 @@ function UpdateProblem() {
           </div>
         </div>
 
-        {/* Code Templates */}
         <div className="card bg-base-100 shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Code Templates</h2>
 

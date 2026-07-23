@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
-import Editor from '@monaco-editor/react';
-import { useParams } from 'react-router';
+import { useState, useRef, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Lock, Sparkles } from 'lucide-react';
+import Editor from '@monaco-editor/react';
 import axiosClient from "../utils/axiosClient"
 import SubmissionHistory from "../components/SubmissionHistory"
-import Editorial from '../components/Editorial';
 import Navbar from '../components/Navbar';
 
 const langMap = {
@@ -13,11 +14,22 @@ const langMap = {
   javascript: 'javascript'
 };
 
+// Normalize backend language strings (e.g. 'C++', 'Java', 'JavaScript')
+// to the frontend keys used in langMap.
+const normalizeLang = (lang) => {
+  if (!lang) return '';
+  const l = lang.toString().trim().toLowerCase();
+  if (l === 'c++' || l === 'cpp' || l === 'cplusplus') return 'cpp';
+  if (l === 'java') return 'java';
+  if (l === 'javascript' || l === 'js') return 'javascript';
+  return '';
+};
+
 const fetchProblem = async (problemId) => {
   const { data } = await axiosClient.get(`/problem/problemById/${problemId}`);
   const initialCodeMap = {};
   Object.keys(langMap).forEach(key => {
-    const found = data.startCode.find(sc => sc.language === langMap[key]);
+    const found = data.startCode?.find(sc => normalizeLang(sc.language) === key);
     initialCodeMap[key] = found ? found.initialCode : '';
   });
   return { problem: data, initialCodeMap };
@@ -26,13 +38,17 @@ const fetchProblem = async (problemId) => {
 const ProblemPage = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('cpp');
   const [codeMap, setCodeMap] = useState({});
-  const [isLangTransitioning, setIsLangTransitioning] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
   const [activeLeftTab, setActiveLeftTab] = useState('description');
   const [activeRightTab, setActiveRightTab] = useState('code');
+  const [solutions, setSolutions] = useState([]);
+  const [solutionsLoading, setSolutionsLoading] = useState(false);
+  const [solutionsError, setSolutionsError] = useState('');
   const editorRef = useRef(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   let {problemId}  = useParams();
 
   const { data: problemData, isLoading } = useQuery({
@@ -43,6 +59,29 @@ const ProblemPage = () => {
 
   const problem = problemData?.problem || null;
   const baseCodeMap = problemData?.initialCodeMap || {};
+  const isPro = user?.subscription?.active || user?.role === 'admin';
+
+  useEffect(() => {
+    if (activeLeftTab !== 'solutions' || !problemId || !isPro) {
+      return;
+    }
+
+    const loadSolutions = async () => {
+      setSolutionsLoading(true);
+      setSolutionsError('');
+      try {
+        const { data } = await axiosClient.get(`/problem/solution/${problemId}`);
+        setSolutions(data.referenceSolution || []);
+      } catch (err) {
+        const message = err.response?.data?.message || 'Failed to load solutions';
+        setSolutionsError(message);
+      } finally {
+        setSolutionsLoading(false);
+      }
+    };
+
+    loadSolutions();
+  }, [activeLeftTab, problemId, isPro]);
 
   const runMutation = useMutation({
     mutationFn: ({ code, language }) => axiosClient.post(`/submission/run/${problemId}`, { code, language }),
@@ -106,11 +145,7 @@ const ProblemPage = () => {
 
   const handleLanguageChange = (language) => {
     if (language === selectedLanguage) return;
-    setIsLangTransitioning(true);
-    setTimeout(() => {
-      setSelectedLanguage(language);
-      setTimeout(() => setIsLangTransitioning(false), 50);
-    }, 150);
+    setSelectedLanguage(language);
   };
 
   const handleEditorDidMount = (editor) => {
@@ -118,7 +153,9 @@ const ProblemPage = () => {
   };
 
   const currentCode = codeMap[selectedLanguage] ?? baseCodeMap[selectedLanguage] ?? '';
-  const loading = runMutation.isPending || submitMutation.isPending;
+  const isRunning = runMutation.isPending;
+  const isSubmitting = submitMutation.isPending;
+  const actionLoading = isRunning || isSubmitting;
 
   const handleRun = () => {
     if (!currentCode || !currentCode.trim()) {
@@ -170,15 +207,10 @@ const ProblemPage = () => {
     // Changed h-screen to min-h-screen for mobile scrolling flexibility
     <div className="min-h-screen md:h-screen flex flex-col md:flex-row bg-base-100 pt-18 overflow-x-hidden">
       
-      {/* Left Panel */}
-      {/* Added flex-shrink-0 and explicit height for mobile so it doesn't collapse */}
       <div className="w-full md:w-1/2 flex flex-col border-b md:border-b-0 md:border-r border-base-300/50 h-[60vh] md:h-full">
-        {/* Left Tabs */}
-        {/* Added overflow-x-auto to tabs for small mobile screens */}
         <div className="flex gap-1 bg-base-200/50 px-4 py-3 border-b border-base-300/50 overflow-x-auto no-scrollbar whitespace-nowrap">
           {[
             { id: 'description', label: 'Description' },
-            { id: 'editorial', label: 'Editorial' },
             { id: 'solutions', label: 'Solutions' },
             { id: 'submissions', label: 'Submissions' }
           ].map((tab) => (
@@ -196,7 +228,6 @@ const ProblemPage = () => {
           ))}
         </div>
 
-        {/* Left Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
           {problem && (
             <>
@@ -251,42 +282,64 @@ const ProblemPage = () => {
                   </div>
                 </div>
               )}
-              {/* Other tabs remain logically same, just contained in the responsive flex-1 div */}
-              {activeLeftTab === 'editorial' && (
-                <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-base-content">Editorial</h2>
-                  <div className="bg-base-200/50 border border-base-300/50 rounded-xl p-4 md:p-6">
-                    <Editorial secureUrl={problem.secureUrl} thumbnailUrl={problem.thumbnailUrl} duration={problem.duration}/>
-                  </div>
-                </div>
-              )}
-
               {activeLeftTab === 'solutions' && (
                 <div className="space-y-4">
                   <h2 className="text-2xl font-bold text-base-content">Solutions</h2>
-                  <div className="space-y-4">
-                    {problem.referenceSolution?.map((solution, index) => (
-                      <div key={index} className="border border-base-300/50 rounded-xl overflow-hidden hover:border-base-300 transition-colors">
-                        <div className="bg-base-200/80 px-5 py-3 border-b border-base-300/50">
-                          <h3 className="font-semibold text-base-content flex items-center gap-2">
-                            <span className="w-6 h-6 rounded bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                              {index + 1}
-                            </span>
-                            {problem?.title} - {solution?.language}
-                          </h3>
+
+                  {!isPro ? (
+                    <div className="card bg-base-200/50 border border-base-300/50">
+                      <div className="card-body items-center text-center py-12">
+                        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                          <Lock className="w-7 h-7 text-primary" />
                         </div>
-                        <div className="p-4 md:p-5">
-                          <pre className="bg-base-300/50 p-4 rounded-lg text-sm overflow-x-auto border border-base-300/50">
-                            <code className="text-base-content">{solution?.completeCode}</code>
-                          </pre>
+                        <h3 className="text-xl font-bold text-base-content mb-2">
+                          Pro subscription required
+                        </h3>
+                        <p className="text-base-content/70 max-w-md mb-6">
+                          Subscribe to Pro to unlock reference solutions, editorial code, and optimal approaches for every problem.
+                        </p>
+                        <button
+                          onClick={() => navigate('/pricing')}
+                          className="btn btn-primary gap-2"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          Subscribe to Unlock
+                        </button>
+                      </div>
+                    </div>
+                  ) : solutionsLoading ? (
+                    <div className="flex justify-center py-12">
+                      <span className="loading loading-spinner loading-lg text-primary"></span>
+                    </div>
+                  ) : solutionsError ? (
+                    <div className="text-center py-12 text-error">
+                      <p>{solutionsError}</p>
+                    </div>
+                  ) : solutions.length === 0 ? (
+                    <div className="text-center py-12 text-base-content/60">
+                      <p>No solutions available for this problem yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {solutions.map((solution, index) => (
+                        <div key={index} className="border border-base-300/50 rounded-xl overflow-hidden hover:border-base-300 transition-colors">
+                          <div className="bg-base-200/80 px-5 py-3 border-b border-base-300/50">
+                            <h3 className="font-semibold text-base-content flex items-center gap-2">
+                              <span className="w-6 h-6 rounded bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                {index + 1}
+                              </span>
+                              {problem?.title} - {solution?.language}
+                            </h3>
+                          </div>
+                          <div className="p-4 md:p-5">
+                            <pre className="bg-base-300/50 p-4 rounded-lg text-sm overflow-x-auto border border-base-300/50">
+                              <code className="text-base-content">{solution?.completeCode}</code>
+                            </pre>
+                          </div>
                         </div>
-                      </div>
-                    )) || (
-                      <div className="text-center py-12 text-base-content/60">
-                        <p>Solutions will be available after you solve the problem.</p>
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -301,10 +354,7 @@ const ProblemPage = () => {
         </div>
       </div>
 
-      {/* Right Panel */}
-      {/* Explicit height for mobile h-[70vh] so editor is usable */}
       <div className="w-full md:w-1/2 flex flex-col h-[70vh] md:h-full">
-        {/* Right Tabs */}
         <div className="flex gap-1 bg-base-200/50 px-4 py-3 border-b border-base-300/50 overflow-x-auto no-scrollbar whitespace-nowrap">
           {[
             { id: 'code', label: 'Code' },
@@ -325,11 +375,9 @@ const ProblemPage = () => {
           ))}
         </div>
 
-        {/* Right Content */}
         <div className="flex-1 flex flex-col min-h-0">
           {activeRightTab === 'code' && (
             <div className="flex-1 flex flex-col min-h-0">
-              {/* Language Selector */}
               <div className="flex justify-between items-center px-4 py-3 border-b border-base-300/50 bg-base-200/30 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2 whitespace-nowrap">
                   {[
@@ -352,8 +400,7 @@ const ProblemPage = () => {
                 </div>
               </div>
 
-              {/* Monaco Editor Container */}
-              <div className={`flex-1 relative min-h-0 transition-opacity duration-200 ease-in-out ${isLangTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="flex-1 relative min-h-0">
                 <Editor
                   height="100%"
                   language={getLanguageForMonaco(selectedLanguage)}
@@ -385,7 +432,6 @@ const ProblemPage = () => {
                 />
               </div>
 
-              {/* Action Buttons */}
               <div className="px-4 py-4 border-t border-base-300/50 bg-base-200/30 flex justify-between items-center gap-3">
                 <button 
                   className="btn btn-ghost btn-sm hover:bg-base-300/50 px-2"
@@ -398,11 +444,11 @@ const ProblemPage = () => {
                 </button>
                 <div className="flex gap-2 md:gap-3">
                   <button
-                    className={`btn btn-outline btn-sm hover:bg-base-300 ${loading ? 'loading' : ''}`}
+                    className={`btn btn-outline btn-sm hover:bg-base-300 ${isRunning ? 'loading' : ''}`}
                     onClick={handleRun}
-                    disabled={loading}
+                    disabled={actionLoading}
                   >
-                    {!loading && (
+                    {!isRunning && (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -411,11 +457,11 @@ const ProblemPage = () => {
                     Run
                   </button>
                   <button
-                    className={`btn btn-primary btn-sm shadow-lg shadow-primary/20 ${loading ? 'loading' : ''}`}
+                    className={`btn btn-primary btn-sm shadow-lg shadow-primary/20 ${isSubmitting ? 'loading' : ''}`}
                     onClick={handleSubmitCode}
-                    disabled={loading}
+                    disabled={actionLoading}
                   >
-                    {!loading && (
+                    {!isSubmitting && (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -466,7 +512,6 @@ const ProblemPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                        {/* Red Error UI content stays the same, contained in responsive div */}
                         <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
                           <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,7 +579,6 @@ const ProblemPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-5">
-                      {/* Submission Failure Result UI Logic */}
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
                           <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

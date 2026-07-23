@@ -22,9 +22,7 @@ const submitCode = async (req,res)=>{
       
       //console.log(language);
       
-    //    Fetch the problem from database
        const problem =  await Problem.findById(problemId);
-    //    testcases(Hidden)
     
     //   Kya apne submission store kar du pehle....
     const submittedResult = await Submission.create({
@@ -39,7 +37,6 @@ const submitCode = async (req,res)=>{
           testCasesTotal:problem.hiddenTestCases.length
     })
 
-    //    Judge0 code ko submit karna hai
     
     const languageId = getLanguageById(language);
    
@@ -58,7 +55,6 @@ const submitCode = async (req,res)=>{
     const testResult = await submitToken(resultToken);
     
 
-    // submittedResult ko update karo
     let testCasesPassed = 0;
     let runtime = 0;
     let memory = 0;
@@ -84,7 +80,6 @@ const submitCode = async (req,res)=>{
     }
 
 
-    // Store the result in Database in Submission
     submittedResult.status   = status;
     submittedResult.testCasesPassed = testCasesPassed;
     submittedResult.errorMessage = errorMessage;
@@ -153,13 +148,10 @@ const runCode = async(req,res)=>{
      if(!userId || !code || !problemId || !language)
        return res.status(400).send("Some field missing");
 
-   //    Fetch the problem from database
       const problem =  await Problem.findById(problemId);
-   //    testcases(Hidden)
       if(language==='cpp')
         language='c++'
 
-   //    Judge0 code ko submit karna hai
 
    const languageId = getLanguageById(language);
 

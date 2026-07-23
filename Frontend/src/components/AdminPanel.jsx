@@ -5,7 +5,6 @@ import axiosClient from '../utils/axiosClient';
 import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-// Zod schema matching the problem schema
 const problemSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
@@ -103,7 +102,6 @@ function AdminPanel() {
       <h1 className="text-3xl font-bold mb-6">Create New Problem</h1>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Basic Information */}
         <div className="card bg-base-100 shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
           <div className="space-y-4">
@@ -166,11 +164,9 @@ function AdminPanel() {
           </div>
         </div>
 
-        {/* Test Cases */}
         <div className="card bg-base-100 shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Test Cases</h2>
           
-          {/* Visible Test Cases */}
           <div className="space-y-4 mb-6">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">Visible Test Cases</h3>
@@ -216,7 +212,6 @@ function AdminPanel() {
             ))}
           </div>
 
-          {/* Hidden Test Cases */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">Hidden Test Cases</h3>
@@ -257,7 +252,6 @@ function AdminPanel() {
           </div>
         </div>
 
-        {/* Code Templates */}
         <div className="card bg-base-100 shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Code Templates</h2>
           

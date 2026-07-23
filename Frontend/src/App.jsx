@@ -7,6 +7,7 @@ import { checkAuth } from "./authSlice";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import VerifyOTP from "./pages/OTPVerification";
+import ForgotPassword from "./pages/ForgotPassword";
 
 import Problems from "./pages/Problems";
 import ProblemPage from "./pages/ProblemPage";
@@ -23,6 +24,9 @@ import UpdateProblem from "./components/UpdateProblem";
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
+import PricingPage from "./pages/PricingPage";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import SubscriptionCancel from "./pages/SubscriptionCancel";
 
 function App() {
   const dispatch = useDispatch();
@@ -39,13 +43,13 @@ function App() {
     dispatch(checkAuth());
   }, [dispatch]);
 
-  // Logic: List of valid routes to determine Navbar visibility
   const validPaths = [
-    "/", "/homePage", "/signup", "/login", "/verify-otp", 
-    "/problems", "/MyProfile", "/update-profile", "/leaderboard", "/admin", "/admin/create", "/admin/update", "/admin/delete"
+    "/", "/homePage", "/signup", "/login", "/verify-otp", "/forgot-password",
+    "/problems", "/MyProfile", "/update-profile", "/leaderboard",
+    "/pricing", "/subscription/success", "/subscription/cancel",
+    "/admin", "/admin/create", "/admin/update", "/admin/delete"
   ];
-  
-  // Logic: Identifies if the current URL is invalid or not a dynamic page
+
   const is404 = !validPaths.includes(location.pathname) &&
                 !location.pathname.startsWith("/problem/") &&
                 !location.pathname.startsWith("/admin/update/");
@@ -60,7 +64,6 @@ function App() {
 
   return (
     <>
-      {/* Logic: Navbar is hidden if is404 is true */}
       {isAuthenticated && !is404 && <Navbar />}
 
       <Routes>
@@ -69,6 +72,7 @@ function App() {
         <Route path="/signup" element={isAuthenticated ? <Navigate to="/" /> : <Signup />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
         <Route path="/verify-otp" element={pendingVerificationEmail ? <VerifyOTP /> : <Navigate to="/signup" />} />
+        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/" /> : <ForgotPassword />} />
 
         <Route path="/problems" element={isAuthenticated ? <Problems /> : <Navigate to="/login" />} />
         <Route path="/problem/:problemId" element={isAuthenticated ? <ProblemPage /> : <Navigate to="/login" />} />
@@ -76,14 +80,16 @@ function App() {
         <Route path="/update-profile" element={isAuthenticated ? <UpdateProfile /> : <Navigate to="/login" />} />
         <Route path="/leaderboard" element={isAuthenticated ? <Leaderboard /> : <Navigate to="/" />} />
 
+        <Route path="/pricing" element={isAuthenticated ? <PricingPage /> : <Navigate to={`/login?callbackUrl=${encodeURIComponent('/pricing')}`} />} />
+        <Route path="/subscription/success" element={isAuthenticated ? <SubscriptionSuccess /> : <Navigate to="/login" />} />
+        <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+
         <Route path="/admin" element={isAuthenticated && user?.role === "admin" ? <Admin /> : <Navigate to="/" />} />
         <Route path="/admin/create" element={isAuthenticated && user?.role === "admin" ? <AdminPanel /> : <Navigate to="/" />} />
         <Route path="/admin/update" element={isAuthenticated && user?.role === "admin" ? <AdminUpdate /> : <Navigate to="/" />} />
         <Route path="/admin/update/:id" element={isAuthenticated && user?.role === "admin" ? <UpdateProblem /> : <Navigate to="/" />} />
         <Route path="/admin/delete" element={isAuthenticated && user?.role === "admin" ? <AdminDelete /> : <Navigate to="/" />} />
 
-        {/* --- CATCH-ALL 404 ERROR ROUTE --- */}
-        {/* Logic: Only shows the error message; Return button has been removed */}
         <Route
           path="*"
           element={

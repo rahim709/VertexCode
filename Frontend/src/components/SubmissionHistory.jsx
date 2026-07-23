@@ -45,12 +45,12 @@ const SubmissionHistory = ({ problemId }) => {
 
   if (error) {
     return (
-      <div className="alert alert-error shadow-lg my-4">
+      <div className="alert alert-error shadow-lg my-4 bg-red-50 border-red-200">
         <div>
-          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>{error.message || 'Failed to fetch submission history'}</span>
+          <span className="text-red-600">{error.message || 'Failed to fetch submission history'}</span>
         </div>
       </div>
     );
@@ -120,7 +120,6 @@ const SubmissionHistory = ({ problemId }) => {
         </>
       )}
 
-      {/* Code View Modal */}
       {selectedSubmission && (
         <div className="modal modal-open">
           <div className="modal-box w-11/12 max-w-5xl">
@@ -145,9 +144,9 @@ const SubmissionHistory = ({ problemId }) => {
               </div>
               
               {selectedSubmission.errorMessage && (
-                <div className="alert alert-error mt-2">
+                <div className="alert alert-error mt-2 bg-red-50 border-red-200">
                   <div>
-                    <span>{selectedSubmission.errorMessage}</span>
+                    <span className="text-red-600">{selectedSubmission.errorMessage}</span>
                   </div>
                 </div>
               )}

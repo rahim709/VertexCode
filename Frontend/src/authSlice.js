@@ -7,7 +7,7 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await axiosClient.post('/user/register', userData);
-      return response.data; // { message, email }
+      return response.data;
     } catch (error) {
       const message = error.response?.data?.message || "Registration failed";
       return rejectWithValue(message);
@@ -15,7 +15,6 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// New: Resend OTP Thunk
 export const resendOTP = createAsyncThunk(
   'auth/resendOTP',
   async (email, { rejectWithValue }) => {
@@ -80,6 +79,32 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+export const requestPasswordReset = createAsyncThunk(
+  'auth/requestPasswordReset',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.post('/user/request-password-reset', { email });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || "Failed to send reset code";
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ email, otp, newPassword }, { rejectWithValue }) => {
+    try {
+      const response = await axiosClient.post('/user/reset-password', { email, otp, newPassword });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || "Failed to reset password";
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
@@ -95,7 +120,6 @@ const authSlice = createSlice({
     resetError: (state) => {
       state.error = null;
     },
-    //updated
     setUser: (state, action) => {
       state.user = action.payload;
     },
@@ -106,7 +130,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Register User Cases
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -115,7 +138,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.authChecked = true; 
         state.pendingVerificationEmail = action.payload.email;
-        // Persist the email so refresh doesn't break the flow
         localStorage.setItem("pendingEmail", action.payload.email);
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -127,7 +149,6 @@ const authSlice = createSlice({
       })
   
 
-      // --- RESEND OTP ---
       .addCase(resendOTP.pending, (state) => {
         state.resendLoading = true;
         state.error = null;
@@ -144,7 +165,6 @@ const authSlice = createSlice({
 
 
 
-      //otp verification
 
       .addCase(verifyOTP.pending, (state) => {
         state.loading = true;
@@ -168,7 +188,6 @@ const authSlice = createSlice({
 
 
 
-      // Login User Cases
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -190,7 +209,6 @@ const authSlice = createSlice({
   
 
 
-      // Check Auth Cases
       .addCase(checkAuth.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -202,9 +220,8 @@ const authSlice = createSlice({
         state.authChecked = true;
         state.isNewlyRegistered = false;
       })
-      .addCase(checkAuth.rejected, (state, action) => {
+      .addCase(checkAuth.rejected, (state) => {
         state.loading = false;
-        // state.error = action.payload?.message || 'Something went wrong';
         state.error = null;
         state.isAuthenticated = false;
         state.user = null;
@@ -213,7 +230,6 @@ const authSlice = createSlice({
   
 
 
-      // Logout User Cases
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -231,7 +247,31 @@ const authSlice = createSlice({
         state.error = action.payload?.message || 'Something went wrong';
         state.isAuthenticated = false;
         state.user = null;
-        state.authChecked = true; 
+        state.authChecked = true;
+      })
+
+      .addCase(requestPasswordReset.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(requestPasswordReset.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(requestPasswordReset.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to send reset code';
+      })
+
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to reset password';
       });
   }
 });

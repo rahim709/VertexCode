@@ -7,7 +7,8 @@ import { ShieldCheck, ArrowLeft, RefreshCcw } from "lucide-react";
 function OTPVerification() {
   const [otp, setOtp] = useState("");
   const [timer, setTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+
+  const canResend = timer === 0;
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -20,22 +21,18 @@ function OTPVerification() {
     isAuthenticated
   } = useSelector((state) => state.auth);
 
-  // Security: Redirect to signup if no user is pending verification
-  // Note: This now works on refresh because we initialize state from localStorage
   useEffect(() => {
     if (!pendingVerificationEmail) {
       navigate("/signup");
     }
   }, [pendingVerificationEmail, navigate]);
 
-  // Navigate to home upon successful authentication
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/homePage");
     }
   }, [isAuthenticated, navigate]);
 
-  // Automatic error reset after 4 seconds
   useEffect(() => {
     if (error) {
       const t = setTimeout(() => dispatch(resetError()), 4000);
@@ -43,15 +40,9 @@ function OTPVerification() {
     }
   }, [error, dispatch]);
 
-  // Cooldown timer logic for Resend OTP
   useEffect(() => {
-    let interval;
-    if (timer > 0) {
-      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
-    } else {
-      setCanResend(true);
-      clearInterval(interval);
-    }
+    if (timer <= 0) return;
+    const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     return () => clearInterval(interval);
   }, [timer]);
 
@@ -71,12 +62,10 @@ function OTPVerification() {
     if (pendingVerificationEmail) {
       dispatch(resendOTP(pendingVerificationEmail));
       setTimer(60);
-      setCanResend(false);
     }
   };
 
   const handleBackToSignup = () => {
-    // Clears Redux state and LocalStorage to prevent redirect loops
     dispatch(clearPendingUser()); 
     navigate("/signup");
   };
@@ -85,8 +74,8 @@ function OTPVerification() {
     <div className="min-h-screen flex items-center justify-center bg-base-200 p-4">
       {error && (
         <div className="toast toast-top toast-center z-[110]">
-          <div className="alert alert-error shadow-lg">
-            <span className="font-semibold text-sm text-white">{error}</span>
+          <div className="alert alert-error shadow-lg bg-red-50 border-red-200">
+            <span className="font-semibold text-sm text-red-600">{error}</span>
           </div>
         </div>
       )}
@@ -99,7 +88,6 @@ function OTPVerification() {
 
           <h2 className="text-2xl font-black tracking-tight mb-2 uppercase italic">Verify Identity</h2>
           
-          {/* Updated text as requested */}
           <p className="text-sm text-base-content/60 mb-8 font-medium">
             We've sent a 6-digit OTP to your email address. Please enter it below to verify your account.
           </p>
@@ -120,10 +108,8 @@ function OTPVerification() {
             <button
               type="submit"
               disabled={loading || otp.length !== 6}
-              /* Big roll / loading spinner removed from className */
               className="btn btn-primary btn-block h-14 shadow-lg shadow-primary/20"
             >
-              {/* Updated button text for verifying state */}
               {loading ? "Verifying OTP..." : "Verify OTP"}
             </button>
           </form>

@@ -32,12 +32,12 @@ function Signup() {
 
   const { loading, error, pendingVerificationEmail } = useSelector((state) => state.auth);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({ 
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(signupSchema),
-    mode: "onChange" // Logic: Validate as the user types to update requirements
+    mode: "onChange"
   });
 
-  // Logic: Watch password value to show real-time requirement status
+  // eslint-disable-next-line react-hooks/incompatible-library
   const passwordValue = watch("password", "");
 
   useEffect(() => {
@@ -61,8 +61,8 @@ function Signup() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-base-200">
       {error && (
         <div className="toast toast-top toast-center z-100">
-          <div className="alert alert-error shadow-lg text-white">
-            <span className="font-semibold">{error}</span>
+          <div className="alert alert-error shadow-lg bg-red-50 border-red-200">
+            <span className="font-semibold text-red-600">{error}</span>
           </div>
         </div>
       )}
@@ -79,7 +79,6 @@ function Signup() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Username & Email inputs remain the same... */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -106,7 +105,6 @@ function Signup() {
               />
             </div>
 
-            {/* Password Field with Initial Requirements Logic */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-semibold flex items-center gap-2">
@@ -128,7 +126,6 @@ function Signup() {
                 </button>
               </div>
 
-              {/* Logic: Display password format requirements initially and during typing */}
               <div className="mt-3 p-3 bg-base-200/50 rounded-lg border border-base-300">
                 <p className="text-[10px] uppercase font-bold tracking-widest text-base-content/40 mb-2 flex items-center gap-1">
                   <Info className="w-3 h-3" /> Password Requirements
