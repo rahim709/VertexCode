@@ -1,9 +1,6 @@
 import { NavLink } from 'react-router';
 import { ArrowRight, ArrowUpRight, Share2 } from 'lucide-react';
 
-// The hero's signature element: "you" as a vertex, edged to every topic on the
-// curriculum. This literalizes the brand name instead of illustrating it with
-// a stock icon or ambient blob.
 function MasteryGraph() {
   const you = { x: 220, y: 210 };
   const nodes = [
@@ -55,9 +52,6 @@ function MasteryGraph() {
   );
 }
 
-// A small stand-in "editor" built from real markup rather than a stock
-// icon-in-a-box placeholder — it earns its space by showing the actual
-// product surface (code in, rank out) instead of gesturing at it.
 function EditorPreview() {
   const lines = [
     { n: 1, t: <span className="text-base-content/40">function</span> },
@@ -148,36 +142,36 @@ function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2 text-primary">
-              <Share2 className="w-8 h-8 rotate-90" />
-              <span className="font-display text-2xl font-bold text-base-content tracking-tight">
+              <Share2 className="w-6 h-6 lg:w-8 lg:h-8 rotate-90" />
+              <span className="font-display text-xl md:text-2xl font-bold text-base-content tracking-tight">
                 Vertex<span className="text-primary">Code</span>
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <NavLink to="/login" className="btn btn-ghost btn-md text-base font-mono font-normal">login</NavLink>
-              <NavLink to="/signup" className="btn btn-primary btn-md px-6 text-base font-mono font-normal">join_now()</NavLink>
+            <div className="flex items-center gap-2 md:gap-3">
+              <NavLink to="/login" className="btn btn-ghost btn-md text-[12px] md:text-base font-mono font-normal">login</NavLink>
+              <NavLink to="/signup" className="btn btn-primary btn-md px-1 md:px-6 text-[12px] md:text-base font-mono font-normal">join_now()</NavLink>
             </div>
           </div>
         </div>
       </nav>
 
-      <section className="container mx-auto px-4 pt-20 pb-24">
+      <section className="container mx-auto px-4 pt-10 md:pt-20 pb-24">
         <div className="grid lg:grid-cols-2 gap-16 items-center max-w-6xl mx-auto">
-          <div>
-            <div className="inline-flex items-center gap-2 mb-6 font-mono text-xs text-base-content/60">
-              <span className="text-primary">traverse</span>
+          <div className="text-center md:text-left">
+            <div className="inline-flex  items-center gap-2 mb-6 font-mono text-xs text-base-content/60">
+              <span className=" text-primary">traverse</span>
               <span>(you) </span>
               <ArrowRight className="w-3 h-3" />
               <span> optimal_solution</span>
             </div>
 
-            <h1 className="font-display text-5xl md:text-6xl font-bold text-base-content mb-6 tracking-tight leading-[1.05]">
+            <h1 className="font-display text-center md:text-left text-4xl md:text-5xl md:text-6xl font-bold text-base-content mb-6 tracking-tight leading-[1.05]">
               Master the algorithms,
               <br />
               <span className="text-primary">not just the syntax.</span>
             </h1>
 
-            <p className="text-lg text-base-content/70 mb-10 max-w-xl leading-relaxed">
+            <p className=" text-[16px] md:text-lg text-center md:text-left text-base-content/70 mb-10 max-w-xl leading-relaxed">
               VertexCode is a graph of every data structure and algorithm you need for a technical interview — and a
               live leaderboard showing exactly where you sit on it.
             </p>
@@ -220,7 +214,7 @@ function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row gap-16 items-center max-w-6xl mx-auto">
             <div className="lg:w-1/2">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-base-content mb-10 tracking-tight">
+              <h2 className="font-display text-center md:text-left text-3xl md:text-4xl font-bold text-base-content mb-10 tracking-tight">
                 Built for the room where
                 <br />
                 the whiteboard is.
